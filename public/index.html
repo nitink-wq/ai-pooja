@@ -7,6 +7,15 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="flameGradShared" x1="28" y1="12" x2="28" y2="41" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFF3D6"/>
+      <stop offset=".45" stop-color="#FFBF6E"/>
+      <stop offset="1" stop-color="#F45722"/>
+    </linearGradient>
+  </defs>
+</svg>
 <div class="wrap">
   <div class="nav">
     <button class="back" id="backBtn" aria-label="Back">
@@ -92,51 +101,10 @@
             <p id="callStatus">Connecting you to your purohit…</p>
           </div>
 
-          <!-- diya-lighting animation: plays over the video (not cropping it)
-               when the devotee taps "Light the Diya" -->
-          <div class="diyaRise hidden" id="diyaRise">
-            <div class="diyaRiseItem" style="--i:0">
-              <svg viewBox="0 0 56 72" fill="none">
-                <ellipse cx="28" cy="60" rx="26" ry="9" fill="#C57C22"/>
-                <ellipse cx="28" cy="57" rx="20" ry="6" fill="#FFBF6E"/>
-                <path class="flame" d="M28 12c6 8 9 14 9 20a9 9 0 11-18 0c0-6 3-12 9-20z" fill="url(#flameGrad0)"/>
-                <defs><linearGradient id="flameGrad0" x1="28" y1="12" x2="28" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFF3D6"/><stop offset=".45" stop-color="#FFBF6E"/><stop offset="1" stop-color="#F45722"/></linearGradient></defs>
-              </svg>
-            </div>
-            <div class="diyaRiseItem" style="--i:1">
-              <svg viewBox="0 0 56 72" fill="none">
-                <ellipse cx="28" cy="60" rx="26" ry="9" fill="#C57C22"/>
-                <ellipse cx="28" cy="57" rx="20" ry="6" fill="#FFBF6E"/>
-                <path class="flame" d="M28 12c6 8 9 14 9 20a9 9 0 11-18 0c0-6 3-12 9-20z" fill="url(#flameGrad1)"/>
-                <defs><linearGradient id="flameGrad1" x1="28" y1="12" x2="28" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFF3D6"/><stop offset=".45" stop-color="#FFBF6E"/><stop offset="1" stop-color="#F45722"/></linearGradient></defs>
-              </svg>
-            </div>
-            <div class="diyaRiseItem" style="--i:2">
-              <svg viewBox="0 0 56 72" fill="none">
-                <ellipse cx="28" cy="60" rx="26" ry="9" fill="#C57C22"/>
-                <ellipse cx="28" cy="57" rx="20" ry="6" fill="#FFBF6E"/>
-                <path class="flame" d="M28 12c6 8 9 14 9 20a9 9 0 11-18 0c0-6 3-12 9-20z" fill="url(#flameGrad2)"/>
-                <defs><linearGradient id="flameGrad2" x1="28" y1="12" x2="28" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFF3D6"/><stop offset=".45" stop-color="#FFBF6E"/><stop offset="1" stop-color="#F45722"/></linearGradient></defs>
-              </svg>
-            </div>
-            <div class="diyaRiseItem" style="--i:3">
-              <svg viewBox="0 0 56 72" fill="none">
-                <ellipse cx="28" cy="60" rx="26" ry="9" fill="#C57C22"/>
-                <ellipse cx="28" cy="57" rx="20" ry="6" fill="#FFBF6E"/>
-                <path class="flame" d="M28 12c6 8 9 14 9 20a9 9 0 11-18 0c0-6 3-12 9-20z" fill="url(#flameGrad3)"/>
-                <defs><linearGradient id="flameGrad3" x1="28" y1="12" x2="28" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFF3D6"/><stop offset=".45" stop-color="#FFBF6E"/><stop offset="1" stop-color="#F45722"/></linearGradient></defs>
-              </svg>
-            </div>
-            <div class="diyaRiseItem" style="--i:4">
-              <svg viewBox="0 0 56 72" fill="none">
-                <ellipse cx="28" cy="60" rx="26" ry="9" fill="#C57C22"/>
-                <ellipse cx="28" cy="57" rx="20" ry="6" fill="#FFBF6E"/>
-                <path class="flame" d="M28 12c6 8 9 14 9 20a9 9 0 11-18 0c0-6 3-12 9-20z" fill="url(#flameGrad4)"/>
-                <defs><linearGradient id="flameGrad4" x1="28" y1="12" x2="28" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFF3D6"/><stop offset=".45" stop-color="#FFBF6E"/><stop offset="1" stop-color="#F45722"/></linearGradient></defs>
-              </svg>
-            </div>
-            <p class="diyaRiseText">दीप प्रज्वलित 🙏 Diya lit</p>
-          </div>
+          <!-- diya-lighting animation: a ring of diyas rising up over the
+               video (not cropping it). Populated by app.js (buildDiyaRise)
+               so the count/size can be tuned in one place. -->
+          <div class="diyaRise hidden" id="diyaRise"></div>
 
           <!-- interactive prompts overlay the video at the bottom instead of
                taking a separate strip below it, so the purohit's video is
@@ -146,6 +114,17 @@
               <p class="actionHint">The purohit asked you to</p>
               <p class="actionLabel" id="actionLabel"></p>
               <button class="actionBtn" id="actionDoneBtn">I've done this ✓</button>
+            </div>
+            <!-- diya action: a single large tap target instead of a text card -->
+            <div class="diyaTapWrap hidden" id="diyaTapWrap">
+              <p class="diyaTapHint" id="diyaTapHint"></p>
+              <button class="diyaTapBtn" id="diyaTapBtn" aria-label="Light the diya">
+                <svg viewBox="0 0 56 72" fill="none">
+                  <ellipse cx="28" cy="60" rx="26" ry="9" fill="#C57C22"/>
+                  <ellipse cx="28" cy="57" rx="20" ry="6" fill="#FFBF6E"/>
+                  <path class="flame" d="M28 12c6 8 9 14 9 20a9 9 0 11-18 0c0-6 3-12 9-20z" fill="url(#flameGradShared)"/>
+                </svg>
+              </button>
             </div>
             <div class="mantraCard hidden" id="mantraCard">
               <p class="mantraHint">Chant this mantra</p>

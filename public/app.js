@@ -33,7 +33,17 @@
 
   function showScreen(name) {
     screens.forEach(function (s) {
-      el('screen-' + s).classList.toggle('hidden', s !== name);
+      var scr = el('screen-' + s);
+      scr.classList.toggle('hidden', s !== name);
+      // Retrigger the crossfade-in animation each time a screen becomes
+      // active (removing+re-adding forces the browser to replay it), so
+      // navigating feels like moving through one continuous app instead of
+      // screens just snapping into place.
+      if (s === name) {
+        scr.classList.remove('screenIn');
+        void scr.offsetWidth;
+        scr.classList.add('screenIn');
+      }
     });
     el('navSub').textContent = name === 'call' ? '' : 'AI Pooja';
   }
@@ -58,9 +68,10 @@
   function renderPoojas() {
     var list = el('poojaList');
     list.innerHTML = '';
-    POOJAS.forEach(function (p) {
+    POOJAS.forEach(function (p, idx) {
       var card = document.createElement('button');
       card.className = 'poojaCard';
+      card.style.setProperty('--i', idx);
       card.type = 'button';
       card.innerHTML =
         '<div class="pIcon">' + FLAME_ICON + '</div>' +
@@ -353,6 +364,7 @@
   function hideActionBar() {
     el('callActionBar').classList.add('hidden');
     el('actionCard').classList.add('hidden');
+    el('diyaTapWrap').classList.add('hidden');
     el('mantraCard').classList.add('hidden');
     el('diyaRise').classList.add('hidden');
     stopMantraRecognition();
@@ -362,13 +374,20 @@
     stopMantraRecognition();
     el('callActionBar').classList.remove('hidden');
     el('mantraCard').classList.add('hidden');
+    el('diyaRise').classList.add('hidden');
+    if (seg.kind === 'diya') {
+      el('actionCard').classList.add('hidden');
+      el('diyaTapWrap').classList.remove('hidden');
+      el('diyaTapHint').textContent = seg.text || 'Tap to light the diya.';
+      el('diyaTapBtn').disabled = false;
+      return;
+    }
+    el('diyaTapWrap').classList.add('hidden');
     el('actionCard').classList.remove('hidden');
     el('actionLabel').textContent = seg.text || 'Complete the action the purohit described.';
     el('actionDoneBtn').textContent = seg.buttonLabel || "I've done this ✓";
     el('actionDoneBtn').disabled = false;
     el('actionDoneBtn').classList.remove('hidden');
-    el('actionDoneBtn').dataset.kind = seg.kind || '';
-    el('diyaRise').classList.add('hidden');
   }
 
   function showMantraCard(seg) {
@@ -386,27 +405,42 @@
     el('skipMantraBtn').classList.add('hidden');
   }
 
-  // Tapping the button for a 'diya' action plays diyas rising up over the
-  // video (not swapping the button for a static icon) before advancing, so
-  // lighting the diya feels like a real action rather than just a tap.
   function confirmActionDone() {
-    var kind = el('actionDoneBtn').dataset.kind;
-    if (kind === 'diya') {
-      playDiyaRise();
-      return;
-    }
     hideActionBar();
     advanceFlow();
   }
 
+  // A ring of diyas (bigger than the tap button's own icon) rises slowly
+  // over the video when tapped, then the flow advances. Built once here
+  // (rather than hardcoded in index.html) so the count/size is easy to tune.
+  var DIYA_RISE_COUNT = 13;
+  var DIYA_RISE_MS = 3600;
+  function buildDiyaRise() {
+    var wrap = el('diyaRise');
+    var html = '';
+    for (var i = 0; i < DIYA_RISE_COUNT; i++) {
+      html +=
+        '<div class="diyaRiseItem" style="--i:' + i + '">' +
+          '<svg viewBox="0 0 56 72" fill="none">' +
+            '<ellipse cx="28" cy="60" rx="26" ry="9" fill="#C57C22"/>' +
+            '<ellipse cx="28" cy="57" rx="20" ry="6" fill="#FFBF6E"/>' +
+            '<path class="flame" d="M28 12c6 8 9 14 9 20a9 9 0 11-18 0c0-6 3-12 9-20z" fill="url(#flameGradShared)"/>' +
+          '</svg>' +
+        '</div>';
+    }
+    html += '<p class="diyaRiseText">दीप प्रज्वलित 🙏 Diya lit</p>';
+    wrap.innerHTML = html;
+  }
+
   function playDiyaRise() {
+    el('diyaTapBtn').disabled = true;
     el('callActionBar').classList.add('hidden');
     el('diyaRise').classList.remove('hidden');
     setTimeout(function () {
       el('diyaRise').classList.add('hidden');
       hideActionBar();
       advanceFlow();
-    }, 2100);
+    }, DIYA_RISE_MS);
   }
 
   function confirmMantraDone() {
@@ -578,6 +612,7 @@
 
   el('endCallBtn').addEventListener('click', endCall);
   el('actionDoneBtn').addEventListener('click', confirmActionDone);
+  el('diyaTapBtn').addEventListener('click', playDiyaRise);
   el('mantraBtn').addEventListener('click', startMantraRecognition);
   el('skipMantraBtn').addEventListener('click', function () {
     stopMantraRecognition();
@@ -610,6 +645,7 @@
   var FLAME_ICON = '<svg viewBox="0 0 24 24" fill="none"><path d="M12 2c1 3-3 4-3 8a3 3 0 006 0c0-1-.5-2-1-2.5.8.2 3 1.8 3 5.5a5 5 0 01-10 0c0-5 3-7 5-11z" fill="#fff"/></svg>';
 
   // ---- boot -----------------------------------------------------------------
+  buildDiyaRise();
   Promise.all([
     fetch('/api/poojas').then(function (r) { return r.json(); }),
     fetch('/api/mode').then(function (r) { return r.json(); }).catch(function () { return MODE; }),

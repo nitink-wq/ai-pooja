@@ -115,11 +115,17 @@ export function buildFlow(pooja, devotee) {
     { kind: 'diya', buttonLabel: '🪔 Light the Diya' }
   ));
 
-  // Tell the devotee what to do with the mantra *before* saying it — without
-  // this the persona used to jump straight from the diya to reciting the
-  // mantra with no instruction, which read as one confusing monologue.
+  // The devotee is only asked to chant twice in the whole ritual — once
+  // here at the start, once again near the close (see the end-chant below).
+  // Everything else is narrated by the persona alone, to keep the flow
+  // light instead of stacking up several chant-and-verify interruptions.
+  var jaap = pooja.jaapMantras;
+  var openingMantra = jaap[0];
+  var closingMantra = jaap[jaap.length - 1];
+  var narratedMantras = jaap.slice(1, jaap.length - 1);
+
   flow.push(speech(pooja.chantIntro));
-  flow.push(mantra(pooja.jaapMantras[0]));
+  flow.push(mantra(openingMantra));
 
   flow.push(speech(
     'ॐ, अद्य ' + name + ' गोत्रे, ' + (devotee.gotra || 'कश्यप गोत्र') + ', ' +
@@ -128,17 +134,18 @@ export function buildFlow(pooja, devotee) {
     'श्रद्धा और विश्वास के साथ संपन्न किया जाए। ईश्वर की कृपा बनी रहे।'
   ));
 
-  if (pooja.jaapMantras.length > 1) {
-    flow.push(speech('अब आगे के मंत्र भी उसी प्रकार, एक-एक करके मेरे साथ दोहराएँ।'));
-    for (var i = 1; i < pooja.jaapMantras.length; i++) {
-      flow.push(mantra(pooja.jaapMantras[i]));
-    }
+  if (narratedMantras.length) {
+    flow.push(speech('अब मैं शेष मंत्रों का उच्चारण स्वयं करता हूँ, आप श्रद्धापूर्वक सुनें और मन में जुड़े रहें।'));
+    narratedMantras.forEach(function (m) { flow.push(speech(m)); });
   }
 
   flow.push(speech('अब मैं हवन कुंड में अग्नि प्रज्वलित कर, आहुति अर्पित करता हूँ।'));
   pooja.havanMantras.forEach(function (m) {
     flow.push(speech(m + '। इदं पितृभ्यः, न मम।'));
   });
+
+  flow.push(speech('अब अंतिम मंत्र मेरे साथ एक बार, पूर्ण श्रद्धा से बोलें — इससे यह अनुष्ठान सिद्ध होता है।'));
+  flow.push(mantra(closingMantra));
 
   flow.push(speech('संकल्प पूर्ण हुआ। ईश्वर से प्रार्थना है कि वे आपकी हर त्रुटि क्षमा करें और शांति प्रदान करें।'));
 

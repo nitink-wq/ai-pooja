@@ -43,13 +43,32 @@ body {
 h1, h2, h3 { font-family: var(--serif); }
 .hidden { display: none !important; }
 
+/* app-like tactile feedback: every tappable surface gets a quick, springy
+   press response instead of feeling like a static webpage */
+button, .poojaCard { transition: transform .12s ease, box-shadow .16s ease, opacity .16s ease; }
+button:active:not([disabled]), .poojaCard:active { transform: scale(.96); }
+
+/* screens crossfade+rise in on navigation instead of snapping, so moving
+   between landing/payment/form/call/complete reads as one continuous app
+   rather than separate static pages (see showScreen in app.js) */
+.screen.screenIn { animation: screenEnter .34s cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes screenEnter {
+  from { opacity: 0; transform: translateY(14px) scale(.985); }
+  to { opacity: 1; transform: none; }
+}
+
 /* ---- nav -------------------------------------------------------------- */
-.nav { display: grid; grid-template-columns: 38px 1fr 38px; align-items: center;
-  padding-top: calc(18px + env(safe-area-inset-top)); padding-bottom: 22px; }
+.nav {
+  display: grid; grid-template-columns: 38px 1fr 38px; align-items: center;
+  padding-top: calc(18px + env(safe-area-inset-top)); padding-bottom: 22px;
+  position: sticky; top: 0; z-index: 40; margin: 0 -18px; padding-left: 18px; padding-right: 18px;
+  background: rgba(255, 249, 241, .78); backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+}
 .nav .back { width: 38px; height: 38px; border: 0; cursor: pointer; border-radius: 50%;
   background: rgba(255, 255, 255, .68); box-shadow: 0 1px 4px rgba(90, 48, 24, .1);
   display: flex; align-items: center; justify-content: center; }
-.nav .back:active { background: var(--panel-deep); }
+.nav .back:active { background: var(--panel-deep); transform: scale(.92); }
 .nav .back svg { width: 19px; height: 19px; }
 .nav .brand { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .nav .brandRow { display: flex; align-items: center; gap: 6px; }
@@ -70,8 +89,10 @@ h1, h2, h3 { font-family: var(--serif); }
   padding: 18px 18px 16px; border-radius: 20px; font-family: var(--sans);
   background: linear-gradient(180deg, rgba(255, 255, 255, .82) 0%, rgba(255, 252, 246, .58) 100%);
   box-shadow: 0 10px 26px rgba(122, 72, 36, .08), inset 0 0 0 1px rgba(197, 124, 34, .16);
+  opacity: 0; animation: cardRise .4s cubic-bezier(.22, 1, .36, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 70ms);
 }
-.poojaCard:active { transform: scale(.99); }
+@keyframes cardRise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 .poojaCard.skel { height: 108px; background: var(--panel); opacity: .5; animation: shim 1.4s ease-in-out infinite; }
 @keyframes shim { 0%, 100% { opacity: .35; } 50% { opacity: .6; } }
 .poojaCard .pIcon {
@@ -215,32 +236,56 @@ h1, h2, h3 { font-family: var(--serif); }
   60% { transform: scale(.94, 1.04) rotate(-2deg); opacity: 1; }
 }
 
-/* diya-lighting animation: five diyas rise up over the video (not a
-   swap-in-place icon) and fade out near the top, then the overlay hides
-   itself and the ritual flow advances (see playDiyaRise in app.js) */
+/* diya action: one large circular tap target instead of a text card */
+.diyaTapWrap { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 8px 0 4px; }
+.diyaTapHint {
+  font-size: 13.5px; font-weight: 600; color: #FFF3E4; text-align: center; line-height: 1.5;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .6);
+}
+.diyaTapBtn {
+  width: 112px; height: 112px; border-radius: 50%; border: 0; cursor: pointer; flex-shrink: 0;
+  background: radial-gradient(62% 62% at 50% 36%, #FFECC8 0%, var(--gold) 55%, var(--cta) 100%);
+  box-shadow: 0 16px 34px -8px rgba(244, 87, 34, .65), inset 0 0 0 4px rgba(255, 255, 255, .4);
+  display: flex; align-items: center; justify-content: center;
+  animation: diyaTapPulse 2.4s ease-in-out infinite;
+  transition: transform .12s ease;
+}
+.diyaTapBtn:active { transform: scale(.93); }
+.diyaTapBtn[disabled] { opacity: .5; pointer-events: none; animation: none; }
+.diyaTapBtn svg { width: 60px; height: 78px; }
+.diyaTapBtn .flame { transform-origin: 50% 100%; animation: flicker 1s ease-in-out infinite; }
+@keyframes diyaTapPulse {
+  0%, 100% { box-shadow: 0 16px 34px -8px rgba(244, 87, 34, .65), inset 0 0 0 4px rgba(255, 255, 255, .4), 0 0 0 0 rgba(244, 87, 34, .4); }
+  50% { box-shadow: 0 16px 34px -8px rgba(244, 87, 34, .65), inset 0 0 0 4px rgba(255, 255, 255, .4), 0 0 0 20px rgba(244, 87, 34, 0); }
+}
+
+/* diya-lighting animation: a ring of diyas (bigger than the tap button's
+   own icon) rise slowly up over the video and fade out near the top, then
+   the overlay hides itself and the ritual flow advances (see playDiyaRise
+   and buildDiyaRise in app.js) */
 .diyaRise {
   position: absolute; inset: 0; z-index: 6; pointer-events: none; overflow: hidden;
 }
 .diyaRiseItem {
-  position: absolute; bottom: 8%; left: calc(10% + (var(--i) * 20%));
-  width: 30px; height: 39px; opacity: 0;
-  animation: diyaRiseUp 2.1s ease-in forwards;
-  animation-delay: calc(var(--i) * 140ms);
+  position: absolute; bottom: 4%; left: calc(2% + (var(--i) * 7.8%));
+  width: 46px; height: 60px; opacity: 0;
+  animation: diyaRiseUp 3.6s ease-in forwards;
+  animation-delay: calc(var(--i) * 160ms);
 }
 .diyaRiseItem svg { width: 100%; height: 100%; }
 .diyaRiseItem .flame { transform-origin: 50% 100%; animation: flicker .8s ease-in-out infinite; }
 @keyframes diyaRiseUp {
-  0% { transform: translateY(0) scale(.75); opacity: 0; }
-  12% { opacity: 1; }
-  70% { opacity: 1; }
-  100% { transform: translateY(-380%) scale(1.05); opacity: 0; }
+  0% { transform: translateY(0) scale(.7); opacity: 0; }
+  10% { opacity: 1; }
+  75% { opacity: 1; }
+  100% { transform: translateY(-460%) scale(1.05); opacity: 0; }
 }
 .diyaRiseText {
   position: absolute; left: 0; right: 0; bottom: 10%; text-align: center;
   font-size: 13.5px; font-weight: 700; color: #FFF3E4; text-shadow: 0 2px 8px rgba(0, 0, 0, .6);
-  opacity: 0; animation: diyaTextFade 2.1s ease forwards;
+  opacity: 0; animation: diyaTextFade 3.6s ease forwards;
 }
-@keyframes diyaTextFade { 0%, 100% { opacity: 0; } 25%, 75% { opacity: 1; } }
+@keyframes diyaTextFade { 0%, 100% { opacity: 0; } 20%, 80% { opacity: 1; } }
 
 /* desktop: the call becomes a centered panel, not full-bleed */
 @media (min-width: 720px) {
@@ -251,7 +296,12 @@ h1, h2, h3 { font-family: var(--serif); }
 /* ---- completion -------------------------------------------------------------- */
 .completePanel { text-align: center; padding-top: 34px; }
 .doneMark { display: flex; justify-content: center; margin-bottom: 16px; }
-.doneMark svg { width: 56px; height: 56px; }
+.doneMark svg { width: 56px; height: 56px; animation: doneMarkPop .55s cubic-bezier(.34, 1.56, .64, 1) both; }
+@keyframes doneMarkPop {
+  0% { transform: scale(.3); opacity: 0; }
+  60% { transform: scale(1.14); opacity: 1; }
+  100% { transform: scale(1); }
+}
 .completePanel h2 { font-size: 23px; margin-bottom: 8px; }
 .completePanel p { font-size: 14.5px; color: var(--ink-soft); line-height: 1.55; margin-bottom: 6px; }
 
