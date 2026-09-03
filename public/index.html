@@ -79,6 +79,9 @@
     <!-- ---- 4. live avatar call ----------------------------------------------- -->
     <section id="screen-call" class="screen hidden fullbleed">
       <div class="callPanel">
+        <div class="callTopBar">
+          <button class="endCallBtn" id="endCallBtn">पूजा समाप्त करें</button>
+        </div>
         <div class="callVideoWrap">
           <video id="personaVideo" playsinline autoplay></video>
           <div class="mockAvatar hidden" id="mockAvatar">
@@ -89,7 +92,18 @@
             <p id="callStatus">Connecting you to your purohit…</p>
           </div>
         </div>
-        <button class="endCallBtn" id="endCallBtn">End pooja</button>
+        <div class="callActionBar hidden" id="callActionBar">
+          <div class="actionCard hidden" id="actionCard">
+            <p class="actionLabel" id="actionLabel"></p>
+            <button class="actionBtn" id="actionDoneBtn">मैंने यह कर लिया ✓</button>
+          </div>
+          <div class="mantraCard hidden" id="mantraCard">
+            <p class="mantraHint">यह मंत्र जपें</p>
+            <p class="mantraText" id="mantraText"></p>
+            <button class="mantraBtn" id="mantraBtn">🎙️ जाप करें</button>
+            <p class="mantraStatus" id="mantraStatus"></p>
+          </div>
+        </div>
       </div>
     </section>
 

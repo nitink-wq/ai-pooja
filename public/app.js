@@ -15,7 +15,18 @@
     orderId: null,
     payToken: null,
     anamClient: null,
+    processedMsgCount: 0,
+    currentMantraTarget: '',
+    endScheduled: false,
   };
+
+  // Must match src/config.js MANTRA_CUE / ACTION_CUE / END_CUE exactly — the
+  // persona is instructed to speak these verbatim, and this client watches
+  // the live transcript (MESSAGE_HISTORY_UPDATED) for the same literal
+  // strings to drive the interactive UI.
+  var MANTRA_CUE = 'अब आप यह मंत्र जाप करने के लिए बटन दबाएँ।';
+  var ACTION_CUE = 'जब आपका यह कार्य पूर्ण हो जाए, तो जारी रखें बटन दबाएँ।';
+  var END_CUE = 'पूजा समाप्त होती है। ॐ शांति शांति शांति।';
 
   function showScreen(name) {
     screens.forEach(function (s) {
@@ -247,7 +258,10 @@
   function realCall(sessionToken, systemPrompt) {
     import('https://esm.sh/@anam-ai/js-sdk@latest')
       .then(function (mod) {
-        var client = mod.createClient(sessionToken);
+        // disableInputAudio: the devotee never speaks to the persona over
+        // their mic — all input comes from our own buttons (mantra-jaap
+        // check, action confirm), sent via sendUserMessage below.
+        var client = mod.createClient(sessionToken, { disableInputAudio: true });
         session.anamClient = client;
         client.addListener(mod.AnamEvent.CONNECTION_ESTABLISHED, function () {
           setCallStatus('');
@@ -267,6 +281,14 @@
         client.addListener(mod.AnamEvent.CONNECTION_CLOSED, function () {
           endCall();
         });
+        // Fires once the persona finishes speaking each turn, with the full
+        // transcript so far — used to detect the mantra/action/end cues the
+        // prompt instructs the persona to say verbatim.
+        if (mod.AnamEvent.MESSAGE_HISTORY_UPDATED) {
+          client.addListener(mod.AnamEvent.MESSAGE_HISTORY_UPDATED, function (messages) {
+            handleTranscript(messages || []);
+          });
+        }
         return client.streamToVideoElement('personaVideo');
       })
       .catch(function () {
@@ -275,15 +297,142 @@
       });
   }
 
+  // ---- interactive protocol: mantra jaap + action confirm + auto end-call ----
+  function handleTranscript(messages) {
+    var fresh = messages.slice(session.processedMsgCount);
+    session.processedMsgCount = messages.length;
+    fresh.forEach(function (m) {
+      if (!m || m.role !== 'persona' || !m.content) return;
+      if (m.content.indexOf(END_CUE) !== -1) {
+        hideActionBar();
+        if (!session.endScheduled) {
+          session.endScheduled = true;
+          setTimeout(endCall, 1500);
+        }
+      } else if (m.content.indexOf(ACTION_CUE) !== -1) {
+        showActionCard(m.content.split(ACTION_CUE).join('').trim());
+      } else if (m.content.indexOf(MANTRA_CUE) !== -1) {
+        showMantraCard(m.content.split(MANTRA_CUE).join('').trim());
+      }
+    });
+  }
+
+  function hideActionBar() {
+    el('callActionBar').classList.add('hidden');
+    el('actionCard').classList.add('hidden');
+    el('mantraCard').classList.add('hidden');
+    stopMantraRecognition();
+  }
+
+  function showActionCard(label) {
+    stopMantraRecognition();
+    el('callActionBar').classList.remove('hidden');
+    el('mantraCard').classList.add('hidden');
+    el('actionCard').classList.remove('hidden');
+    el('actionLabel').textContent = label || 'बताया गया कार्य पूर्ण करें।';
+    el('actionDoneBtn').disabled = false;
+  }
+
+  function showMantraCard(mantraText) {
+    session.currentMantraTarget = mantraText;
+    el('callActionBar').classList.remove('hidden');
+    el('actionCard').classList.add('hidden');
+    el('mantraCard').classList.remove('hidden');
+    el('mantraText').textContent = mantraText;
+    el('mantraStatus').textContent = '';
+    el('mantraBtn').disabled = false;
+    el('mantraBtn').textContent = '🎙️ जाप करें';
+  }
+
+  function confirmActionDone() {
+    hideActionBar();
+    if (session.anamClient && typeof session.anamClient.sendUserMessage === 'function') {
+      session.anamClient.sendUserMessage('यजमान ने बताई गई क्रिया पूर्ण कर ली है। कृपया आगे बढ़ें।');
+    }
+  }
+
+  function confirmMantraDone() {
+    hideActionBar();
+    if (session.anamClient && typeof session.anamClient.sendUserMessage === 'function') {
+      session.anamClient.sendUserMessage('यजमान ने मंत्र जाप पूर्ण किया। कृपया आगे बढ़ें।');
+    }
+  }
+
+  // Word-overlap (Sørensen–Dice) similarity, good enough for short mantras.
+  function normalizeWords(s) {
+    return String(s || '').replace(/[।॥.,!?]/g, ' ').trim().split(/\s+/).filter(Boolean);
+  }
+  function mantraSimilarity(said, target) {
+    var a = normalizeWords(said);
+    var b = normalizeWords(target).slice();
+    if (!a.length || !b.length) return 0;
+    var matches = 0;
+    a.forEach(function (w) {
+      var idx = b.indexOf(w);
+      if (idx !== -1) { matches++; b.splice(idx, 1); }
+    });
+    return (2 * matches) / (a.length + normalizeWords(target).length);
+  }
+
+  var activeRecognition = null;
+  function stopMantraRecognition() {
+    if (activeRecognition) {
+      try { activeRecognition.abort(); } catch (e) { /* already stopped */ }
+      activeRecognition = null;
+    }
+  }
+
+  function startMantraRecognition() {
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      // No on-device speech recognition available in this browser — accept
+      // the button press as the confirmation instead of blocking the flow.
+      confirmMantraDone();
+      return;
+    }
+    var rec = new SR();
+    activeRecognition = rec;
+    rec.lang = 'hi-IN';
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    el('mantraBtn').disabled = true;
+    el('mantraBtn').textContent = 'सुन रहे हैं…';
+    el('mantraStatus').textContent = '';
+    rec.onresult = function (e) {
+      var said = (e.results && e.results[0] && e.results[0][0] && e.results[0][0].transcript) || '';
+      var score = mantraSimilarity(said, session.currentMantraTarget);
+      if (score >= 0.5) {
+        el('mantraStatus').textContent = 'जाप स्वीकार हुआ ✓';
+        confirmMantraDone();
+      } else {
+        el('mantraStatus').textContent = 'स्पष्ट नहीं सुनाई दिया — कृपया मंत्र फिर से जपें।';
+        el('mantraBtn').disabled = false;
+        el('mantraBtn').textContent = '🎙️ जाप करें';
+      }
+    };
+    rec.onerror = function () {
+      el('mantraStatus').textContent = 'सुन नहीं पाए — कृपया फिर से बटन दबाएँ।';
+      el('mantraBtn').disabled = false;
+      el('mantraBtn').textContent = '🎙️ जाप करें';
+    };
+    rec.onend = function () { activeRecognition = null; };
+    try { rec.start(); } catch (e) { confirmMantraDone(); }
+  }
+
   function endCall() {
+    stopMantraRecognition();
     if (session.anamClient) {
       try { session.anamClient.stopStreaming(); } catch (e) { /* already closed */ }
       session.anamClient = null;
     }
     el('mockAvatar').classList.add('hidden');
+    hideActionBar();
     session.pooja = null;
     session.orderId = null;
     session.payToken = null;
+    session.processedMsgCount = 0;
+    session.currentMantraTarget = '';
+    session.endScheduled = false;
     // Reset the stack rather than pushing: the call can't be resumed, so
     // the back button from the completion screen should land on landing,
     // not on a dead call screen.
@@ -292,6 +441,8 @@
   }
 
   el('endCallBtn').addEventListener('click', endCall);
+  el('actionDoneBtn').addEventListener('click', confirmActionDone);
+  el('mantraBtn').addEventListener('click', startMantraRecognition);
 
   // ---- 5. completion -------------------------------------------------------------
   el('homeBtn').addEventListener('click', function () {
