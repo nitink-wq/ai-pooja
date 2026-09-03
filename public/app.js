@@ -343,9 +343,9 @@
     if (seg.type === 'speech') {
       advanceFlow();
     } else if (seg.type === 'mantra') {
-      showMantraCard(seg.text);
+      showMantraCard(seg);
     } else if (seg.type === 'action') {
-      showActionCard(seg.text);
+      showActionCard(seg);
     }
   }
 
@@ -353,30 +353,51 @@
     el('callActionBar').classList.add('hidden');
     el('actionCard').classList.add('hidden');
     el('mantraCard').classList.add('hidden');
+    el('diyaFlame').classList.add('hidden');
     stopMantraRecognition();
   }
 
-  function showActionCard(label) {
+  function showActionCard(seg) {
     stopMantraRecognition();
     el('callActionBar').classList.remove('hidden');
     el('mantraCard').classList.add('hidden');
     el('actionCard').classList.remove('hidden');
-    el('actionLabel').textContent = label || 'Complete the action the purohit described.';
+    el('actionLabel').textContent = seg.text || 'Complete the action the purohit described.';
+    el('actionDoneBtn').textContent = seg.buttonLabel || "I've done this ✓";
     el('actionDoneBtn').disabled = false;
+    el('actionDoneBtn').classList.remove('hidden');
+    el('actionDoneBtn').dataset.kind = seg.kind || '';
+    el('diyaFlame').classList.add('hidden');
   }
 
-  function showMantraCard(mantraText) {
-    session.currentMantraTarget = mantraText;
+  function showMantraCard(seg) {
+    session.currentMantraTarget = seg.text;
     el('callActionBar').classList.remove('hidden');
     el('actionCard').classList.add('hidden');
     el('mantraCard').classList.remove('hidden');
-    el('mantraText').textContent = mantraText;
+    el('mantraText').textContent = seg.text;
+    el('mantraHeard').textContent = '';
+    el('mantraHeard').classList.add('hidden');
     el('mantraStatus').textContent = '';
     el('mantraBtn').disabled = false;
     el('mantraBtn').textContent = '🎙️ Chant now';
   }
 
+  // Tapping the button for a 'diya' action plays a short flame animation
+  // before advancing, so lighting the diya feels like an action rather than
+  // just an acknowledgement.
   function confirmActionDone() {
+    var kind = el('actionDoneBtn').dataset.kind;
+    if (kind === 'diya') {
+      el('actionDoneBtn').disabled = true;
+      el('actionDoneBtn').classList.add('hidden');
+      el('diyaFlame').classList.remove('hidden');
+      setTimeout(function () {
+        hideActionBar();
+        advanceFlow();
+      }, 1600);
+      return;
+    }
     hideActionBar();
     advanceFlow();
   }
@@ -387,19 +408,28 @@
   }
 
   // Word-overlap (Sørensen–Dice) similarity, good enough for short mantras.
+  // Returns both the score and the raw match count — a short mantra like
+  // "ओम् गं गणपतये नमः" can hit score >= 0.5 off a single common word
+  // ("ओम्"/"नमः") match, so the caller also requires a minimum match count
+  // to avoid accepting near-silence or an unrelated utterance.
   function normalizeWords(s) {
     return String(s || '').replace(/[।॥.,!?]/g, ' ').trim().split(/\s+/).filter(Boolean);
   }
   function mantraSimilarity(said, target) {
     var a = normalizeWords(said);
-    var b = normalizeWords(target).slice();
-    if (!a.length || !b.length) return 0;
+    var targetWords = normalizeWords(target);
+    var b = targetWords.slice();
+    if (!a.length || !b.length) return { score: 0, matches: 0, targetWordCount: targetWords.length };
     var matches = 0;
     a.forEach(function (w) {
       var idx = b.indexOf(w);
       if (idx !== -1) { matches++; b.splice(idx, 1); }
     });
-    return (2 * matches) / (a.length + normalizeWords(target).length);
+    return {
+      score: (2 * matches) / (a.length + targetWords.length),
+      matches: matches,
+      targetWordCount: targetWords.length,
+    };
   }
 
   var activeRecognition = null;
@@ -421,15 +451,25 @@
     var rec = new SR();
     activeRecognition = rec;
     rec.lang = 'hi-IN';
+    rec.continuous = false;
     rec.interimResults = false;
     rec.maxAlternatives = 1;
     el('mantraBtn').disabled = true;
     el('mantraBtn').textContent = 'Listening…';
     el('mantraStatus').textContent = '';
+    el('mantraHeard').textContent = '';
+    el('mantraHeard').classList.add('hidden');
     rec.onresult = function (e) {
       var said = (e.results && e.results[0] && e.results[0][0] && e.results[0][0].transcript) || '';
-      var score = mantraSimilarity(said, session.currentMantraTarget);
-      if (score >= 0.5) {
+      var result = mantraSimilarity(said, session.currentMantraTarget);
+      el('mantraHeard').textContent = 'Heard: "' + said + '"';
+      el('mantraHeard').classList.remove('hidden');
+      // Require both a decent overlap score AND at least 2 matched words (or
+      // all of them, if the mantra is only 1-2 words) — a bare score
+      // threshold alone can pass off a single common word like "ओम्"/"नमः"
+      // shared with almost every mantra.
+      var minMatches = Math.min(2, result.targetWordCount);
+      if (result.score >= 0.5 && result.matches >= minMatches) {
         el('mantraStatus').textContent = 'Mantra accepted ✓';
         confirmMantraDone();
       } else {

@@ -82,7 +82,7 @@
         <div class="callTopBar">
           <button class="endCallBtn" id="endCallBtn">End Pooja</button>
         </div>
-        <div class="callVideoWrap">
+        <div class="callVideoWrap" id="callVideoWrap">
           <video id="personaVideo" playsinline autoplay></video>
           <div class="mockAvatar hidden" id="mockAvatar">
             <div class="mockAvatarRing"></div>
@@ -97,12 +97,28 @@
             <p class="actionHint">The purohit asked you to</p>
             <p class="actionLabel" id="actionLabel"></p>
             <button class="actionBtn" id="actionDoneBtn">I've done this ✓</button>
+            <div class="diyaFlame hidden" id="diyaFlame">
+              <svg viewBox="0 0 56 72" fill="none">
+                <ellipse cx="28" cy="60" rx="26" ry="9" fill="#C57C22"/>
+                <ellipse cx="28" cy="57" rx="20" ry="6" fill="#FFBF6E"/>
+                <path class="flame" d="M28 12c6 8 9 14 9 20a9 9 0 11-18 0c0-6 3-12 9-20z" fill="url(#flameGrad)"/>
+                <defs>
+                  <linearGradient id="flameGrad" x1="28" y1="12" x2="28" y2="41" gradientUnits="userSpaceOnUse">
+                    <stop offset="0" stop-color="#FFF3D6"/>
+                    <stop offset=".45" stop-color="#FFBF6E"/>
+                    <stop offset="1" stop-color="#F45722"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <p>Diya lit 🙏</p>
+            </div>
           </div>
           <div class="mantraCard hidden" id="mantraCard">
             <p class="mantraHint">Chant this mantra</p>
             <p class="mantraText" id="mantraText"></p>
             <button class="mantraBtn" id="mantraBtn">🎙️ Chant now</button>
             <p class="mantraStatus" id="mantraStatus"></p>
+            <p class="mantraHeard hidden" id="mantraHeard"></p>
           </div>
         </div>
       </div>

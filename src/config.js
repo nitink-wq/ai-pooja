@@ -10,8 +10,10 @@
 //   'mantra' — a mantra the DEVOTEE chants; after the persona says it once,
 //              the app shows a mic button and waits for a spoken match
 //   'action' — a physical action (light a diya, apply tilak); after the
-//              persona describes it, the app shows an "I've done this"
-//              button and waits for a tap
+//              persona describes it, the app shows a button labelled with
+//              the action itself (e.g. "Light the Diya", from
+//              segment.buttonLabel) and waits for a tap, playing a small
+//              animation for segment.kind === 'diya'
 //
 // jaapMantras[0] is always the shared Ganesh mantra (used right after the
 // sankalp); the rest are this pooja's own mantras. Every mantra/havan line
@@ -81,7 +83,13 @@ export function findPooja(id) {
 
 function speech(text) { return { type: 'speech', text }; }
 function mantra(text) { return { type: 'mantra', text }; }
-function action(text) { return { type: 'action', text }; }
+// opts.kind flags a specific animation on the client (currently 'diya');
+// opts.buttonLabel is the action button's own label — it should read as an
+// instruction to perform the action ("Light the Diya"), not a confirmation
+// of having already done it ("I've done this").
+function action(text, opts) {
+  return Object.assign({ type: 'action', text }, opts || {});
+}
 
 // Builds the ordered, per-devotee segment list for a live call. Every
 // segment's text is spoken via talk() — deterministic, not LLM-generated —
@@ -100,7 +108,8 @@ export function buildFlow(pooja, devotee) {
   ));
 
   flow.push(action(
-    'अब मैं दीप प्रज्वलित कर रहा हूँ। कृपया अपना दीया जलाएँ।'
+    'अब मैं दीप प्रज्वलित कर रहा हूँ। कृपया अपना दीया जलाएँ।',
+    { kind: 'diya', buttonLabel: '🪔 Light the Diya' }
   ));
 
   flow.push(mantra(pooja.jaapMantras[0]));
@@ -125,7 +134,8 @@ export function buildFlow(pooja, devotee) {
 
   flow.push(action(
     'समापन में मैं भस्म से आपके मस्तक पर तिलक करने का भाव अर्पित करता हूँ — यह ईश्वर का ' +
-    'आशीर्वाद है। कृपया अपने माथे पर एक हल्का तिलक लगाएँ।'
+    'आशीर्वाद है। कृपया अपने माथे पर एक हल्का तिलक लगाएँ।',
+    { kind: 'tilak', buttonLabel: '🙏 Apply Tilak' }
   ));
 
   flow.push(speech('पूजा समाप्त होती है। ॐ शांति शांति शांति।'));
