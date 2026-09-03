@@ -20,13 +20,11 @@
     endScheduled: false,
   };
 
-  // Must match src/config.js MANTRA_CUE / ACTION_CUE / END_CUE exactly — the
-  // persona is instructed to speak these verbatim, and this client watches
-  // the live transcript (MESSAGE_HISTORY_UPDATED) for the same literal
-  // strings to drive the interactive UI.
-  var MANTRA_CUE = 'अब आप यह मंत्र जाप करने के लिए बटन दबाएँ।';
-  var ACTION_CUE = 'जब आपका यह कार्य पूर्ण हो जाए, तो जारी रखें बटन दबाएँ।';
-  var END_CUE = 'पूजा समाप्त होती है। ॐ शांति शांति शांति।';
+  // The persona (LLM, via a stateful Anam personaId) is instructed in
+  // src/config.js to speak fixed cue sentences at each interaction point,
+  // but an LLM restates instructions in its own words rather than reciting
+  // them character-for-character — so detection here is keyword/fuzzy, not
+  // an exact string match. See detectCue() below.
 
   function showScreen(name) {
     screens.forEach(function (s) {
@@ -282,8 +280,7 @@
           endCall();
         });
         // Fires once the persona finishes speaking each turn, with the full
-        // transcript so far — used to detect the mantra/action/end cues the
-        // prompt instructs the persona to say verbatim.
+        // transcript so far — used to detect the mantra/action/end cues.
         if (mod.AnamEvent.MESSAGE_HISTORY_UPDATED) {
           client.addListener(mod.AnamEvent.MESSAGE_HISTORY_UPDATED, function (messages) {
             handleTranscript(messages || []);
@@ -298,21 +295,50 @@
   }
 
   // ---- interactive protocol: mantra jaap + action confirm + auto end-call ----
+  // The persona is an LLM — it restates the cue instructions from
+  // src/config.js in its own words rather than reciting them verbatim, so
+  // detection here is keyword-based (does this sentence mention a button,
+  // and is it about a mantra vs. a physical action vs. ending the pooja)
+  // rather than an exact string match.
+  function splitSentences(content) {
+    return String(content || '').split(/[।.!?]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+  }
+
+  // Drops the trailing "press the button" instruction sentence(s) so what's
+  // left is just the mantra/action content the persona actually described.
+  function stripButtonSentence(content) {
+    var sentences = splitSentences(content);
+    while (sentences.length > 1 && /बटन/.test(sentences[sentences.length - 1])) {
+      sentences.pop();
+    }
+    return sentences.join('। ').trim();
+  }
+
+  function detectCue(content) {
+    var hasButtonMention = /बटन/.test(content) && /(दबा|दबाए|press)/i.test(content);
+    var mentionsEnd = /(समाप्त|संकल्प पूर्ण|पूजा .*(पूर्ण|संपन्न))/.test(content) && /शांति/.test(content);
+    if (mentionsEnd) return 'end';
+    if (!hasButtonMention) return null;
+    if (/(मंत्र|जाप|जपें|जपिए)/.test(content)) return 'mantra';
+    return 'action';
+  }
+
   function handleTranscript(messages) {
     var fresh = messages.slice(session.processedMsgCount);
     session.processedMsgCount = messages.length;
     fresh.forEach(function (m) {
       if (!m || m.role !== 'persona' || !m.content) return;
-      if (m.content.indexOf(END_CUE) !== -1) {
+      var cue = detectCue(m.content);
+      if (cue === 'end') {
         hideActionBar();
         if (!session.endScheduled) {
           session.endScheduled = true;
           setTimeout(endCall, 1500);
         }
-      } else if (m.content.indexOf(ACTION_CUE) !== -1) {
-        showActionCard(m.content.split(ACTION_CUE).join('').trim());
-      } else if (m.content.indexOf(MANTRA_CUE) !== -1) {
-        showMantraCard(m.content.split(MANTRA_CUE).join('').trim());
+      } else if (cue === 'action') {
+        showActionCard(stripButtonSentence(m.content));
+      } else if (cue === 'mantra') {
+        showMantraCard(stripButtonSentence(m.content));
       }
     });
   }
@@ -329,7 +355,7 @@
     el('callActionBar').classList.remove('hidden');
     el('mantraCard').classList.add('hidden');
     el('actionCard').classList.remove('hidden');
-    el('actionLabel').textContent = label || 'बताया गया कार्य पूर्ण करें।';
+    el('actionLabel').textContent = label || 'Complete the action the purohit described.';
     el('actionDoneBtn').disabled = false;
   }
 
@@ -341,7 +367,7 @@
     el('mantraText').textContent = mantraText;
     el('mantraStatus').textContent = '';
     el('mantraBtn').disabled = false;
-    el('mantraBtn').textContent = '🎙️ जाप करें';
+    el('mantraBtn').textContent = '🎙️ Chant now';
   }
 
   function confirmActionDone() {
@@ -396,24 +422,24 @@
     rec.interimResults = false;
     rec.maxAlternatives = 1;
     el('mantraBtn').disabled = true;
-    el('mantraBtn').textContent = 'सुन रहे हैं…';
+    el('mantraBtn').textContent = 'Listening…';
     el('mantraStatus').textContent = '';
     rec.onresult = function (e) {
       var said = (e.results && e.results[0] && e.results[0][0] && e.results[0][0].transcript) || '';
       var score = mantraSimilarity(said, session.currentMantraTarget);
       if (score >= 0.5) {
-        el('mantraStatus').textContent = 'जाप स्वीकार हुआ ✓';
+        el('mantraStatus').textContent = 'Mantra accepted ✓';
         confirmMantraDone();
       } else {
-        el('mantraStatus').textContent = 'स्पष्ट नहीं सुनाई दिया — कृपया मंत्र फिर से जपें।';
+        el('mantraStatus').textContent = 'Not clear — please chant the mantra again.';
         el('mantraBtn').disabled = false;
-        el('mantraBtn').textContent = '🎙️ जाप करें';
+        el('mantraBtn').textContent = '🎙️ Chant now';
       }
     };
     rec.onerror = function () {
-      el('mantraStatus').textContent = 'सुन नहीं पाए — कृपया फिर से बटन दबाएँ।';
+      el('mantraStatus').textContent = 'Could not hear you — press the button again.';
       el('mantraBtn').disabled = false;
-      el('mantraBtn').textContent = '🎙️ जाप करें';
+      el('mantraBtn').textContent = '🎙️ Chant now';
     };
     rec.onend = function () { activeRecognition = null; };
     try { rec.start(); } catch (e) { confirmMantraDone(); }
