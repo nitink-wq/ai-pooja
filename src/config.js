@@ -94,60 +94,57 @@ function action(text, opts) {
   return Object.assign({ type: 'action', text }, opts || {});
 }
 
+// The astro's name is always "पंडित नितिन" — written in Devanagari, not
+// Latin script, so it never breaks the flow of otherwise-Hindi speech.
+var PANDIT_NAME = 'पंडित नितिन';
+
 // Builds the ordered, per-devotee segment list for a live call. Every
 // segment's text is spoken via talk() — deterministic, not LLM-generated —
 // so the app always knows exactly when to pause for a mantra/action and
 // when to auto-advance. gotra defaults to "कश्यप गोत्र" per tradition when
 // unknown, matching temple convention for devotees who don't know theirs.
+//
+// Shape of the ritual (per user direction, not just an AI-disclosure demo):
+//  1. a short warm greeting — no "I am an AI" preamble
+//  2. light the diya
+//  3. one continuous ~1-minute block of sankalp + mantras + havan, spoken as
+//     a single segment so there's no pause/break partway through it
+//  4. exactly one moment where the devotee chants a shloka themselves
+//  5. tilak, then a warm closing — the call then auto-ends (see app.js)
 export function buildFlow(pooja, devotee) {
   var name = devotee.name;
+  var gotra = devotee.gotra || 'कश्यप गोत्र';
   var flow = [];
 
   flow.push(speech(
-    'नमस्कार ' + name + ' जी। मैं पंडित Nitin हूँ — आस्ट्रोलोकल पर एक डिजिटल पंडित, ' +
-    'ज्योतिषी Nitin के मार्गदर्शन में बनाया गया हूँ। मैं एक वास्तविक पंडित नहीं हूँ, ' +
-    'किंतु आपकी यह ' + pooja.poojaLabel + ' शास्त्र-सम्मत विधि से, पूर्ण श्रद्धा के साथ ' +
-    'संपन्न कराऊँगा। कृपया हाथ जोड़कर, नेत्र बंद कर श्रद्धा से जुड़ें।'
+    'नमस्ते ' + name + ' जी। मैं ' + PANDIT_NAME + ' हूँ। आज मैं आपके साथ मिलकर ' +
+    pooja.poojaLabel + ' पूर्ण श्रद्धा और विधि-विधान से सम्पन्न करूँगा। कृपया हाथ जोड़कर, ' +
+    'शांत मन से मेरे साथ जुड़ें।'
   ));
 
   flow.push(action(
-    'अब मैं दीप प्रज्वलित कर रहा हूँ। कृपया अपना दीया जलाएँ।',
+    'सबसे पहले हम दीप प्रज्वलित करेंगे। कृपया अपना दीया जलाएँ।',
     { kind: 'diya', buttonLabel: '🪔 Light the Diya' }
   ));
 
-  // The devotee is only asked to chant twice in the whole ritual — once
-  // here at the start, once again near the close (see the end-chant below).
-  // Everything else is narrated by the persona alone, to keep the flow
-  // light instead of stacking up several chant-and-verify interruptions.
-  var jaap = pooja.jaapMantras;
-  var openingMantra = jaap[0];
-  var closingMantra = jaap[jaap.length - 1];
-  var narratedMantras = jaap.slice(1, jaap.length - 1);
+  // One continuous recitation — sankalp, the pooja's own mantras, and the
+  // havan invocation — all in a single spoken segment (one talk() call)
+  // instead of several chained ones, so it plays start to finish the way a
+  // real Hindi pooja does, with no pause or UI interruption partway through.
+  var continuousParts = [
+    'ॐ, अद्य ' + name + ' गोत्रे, ' + gotra + ', ' + name + ' जी, जन्म-तिथि ' + devotee.dob +
+      ', जन्म स्थान ' + devotee.place + ' — यह संकल्प लेते हैं कि ' + devotee.issue + ' हेतु, ' +
+      pooja.poojaLabel + ' का अनुष्ठान श्रद्धा और विश्वास के साथ संपन्न किया जाए। ईश्वर की कृपा बनी रहे।',
+  ];
+  pooja.jaapMantras.forEach(function (m) { continuousParts.push(m); });
+  continuousParts.push('अब हम हवन कुंड में अग्नि प्रज्वलित कर आहुति अर्पित करते हैं।');
+  pooja.havanMantras.forEach(function (m) { continuousParts.push(m + '। इदं पितृभ्यः, न मम।'); });
+  flow.push(speech(continuousParts.join(' ')));
 
+  // The one and only moment the devotee chants aloud, in between the
+  // narrated portion and the closing — not at the very start or end.
   flow.push(speech(pooja.chantIntro));
-  flow.push(mantra(openingMantra));
-
-  flow.push(speech(
-    'ॐ, अद्य ' + name + ' गोत्रे, ' + (devotee.gotra || 'कश्यप गोत्र') + ', ' +
-    name + ' जी, जन्म-तिथि ' + devotee.dob + ', जन्म स्थान ' + devotee.place + ' — ' +
-    'यह संकल्प लेते हैं कि ' + devotee.issue + ' हेतु, ' + pooja.poojaLabel + ' का अनुष्ठान ' +
-    'श्रद्धा और विश्वास के साथ संपन्न किया जाए। ईश्वर की कृपा बनी रहे।'
-  ));
-
-  if (narratedMantras.length) {
-    flow.push(speech('अब मैं शेष मंत्रों का उच्चारण स्वयं करता हूँ, आप श्रद्धापूर्वक सुनें और मन में जुड़े रहें।'));
-    narratedMantras.forEach(function (m) { flow.push(speech(m)); });
-  }
-
-  flow.push(speech('अब मैं हवन कुंड में अग्नि प्रज्वलित कर, आहुति अर्पित करता हूँ।'));
-  pooja.havanMantras.forEach(function (m) {
-    flow.push(speech(m + '। इदं पितृभ्यः, न मम।'));
-  });
-
-  flow.push(speech('अब अंतिम मंत्र मेरे साथ एक बार, पूर्ण श्रद्धा से बोलें — इससे यह अनुष्ठान सिद्ध होता है।'));
-  flow.push(mantra(closingMantra));
-
-  flow.push(speech('संकल्प पूर्ण हुआ। ईश्वर से प्रार्थना है कि वे आपकी हर त्रुटि क्षमा करें और शांति प्रदान करें।'));
+  flow.push(mantra(pooja.jaapMantras[0]));
 
   flow.push(action(
     'समापन में मैं भस्म से आपके मस्तक पर तिलक करने का भाव अर्पित करता हूँ — यह ईश्वर का ' +
@@ -155,7 +152,10 @@ export function buildFlow(pooja, devotee) {
     { kind: 'tilak', buttonLabel: '🙏 Apply Tilak' }
   ));
 
-  flow.push(speech('पूजा समाप्त होती है। ॐ शांति शांति शांति।'));
+  flow.push(speech(
+    'आपकी ' + pooja.poojaLabel + ' सम्पन्न हुई। ॐ शांति शांति शांति। ईश्वर की कृपा सदा आप और ' +
+    'आपके परिवार पर बनी रहे — सुखी रहें, स्वस्थ रहें। नमस्ते ' + name + ' जी।'
+  ));
 
   return flow;
 }

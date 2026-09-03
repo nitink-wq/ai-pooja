@@ -484,6 +484,15 @@
   // Marks one failed/inconclusive chant attempt: resets the button and, from
   // the first failure onward, reveals a skip button so the devotee is never
   // stuck retrying a mantra recognition never confirms.
+  //
+  // Also has the persona speak a short retry line here rather than staying
+  // silent. Leaving the avatar fully idle while we wait on mic input is
+  // what let Anam's own conversational engine take over and restart from
+  // its default greeting after a couple of silent tries — our script must
+  // stay in control of every utterance, so we never leave a real gap for
+  // that to happen. onSegmentSpoken() no-ops for this since
+  // awaitingSegmentSpeech is false while waiting on a chant, so it can't
+  // interfere with ritual-flow advancement.
   function markMantraAttemptFailed(msg) {
     el('mantraStatus').textContent = msg;
     el('mantraBtn').disabled = false;
@@ -491,6 +500,9 @@
     session.mantraAttempts += 1;
     if (session.mantraAttempts >= 1) {
       el('skipMantraBtn').classList.remove('hidden');
+    }
+    if (session.anamClient && typeof session.anamClient.talk === 'function') {
+      session.anamClient.talk('कोई बात नहीं, कृपया मंत्र फिर से बोलने का प्रयास करें।');
     }
   }
 

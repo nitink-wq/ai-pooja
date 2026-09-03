@@ -56,6 +56,12 @@ button:active:not([disabled]), .poojaCard:active { transform: scale(.96); }
   from { opacity: 0; transform: translateY(14px) scale(.985); }
   to { opacity: 1; transform: none; }
 }
+/* the call screen holds a position:fixed panel (.callPanel, pinned to the
+   viewport) — animating `transform` on an ancestor promotes it to a new
+   containing block for fixed descendants, which breaks that fixed layout.
+   Fade-only here avoids that entirely. */
+.screen.fullbleed.screenIn { animation: screenFade .28s ease both; }
+@keyframes screenFade { from { opacity: 0; } to { opacity: 1; } }
 
 /* ---- nav -------------------------------------------------------------- */
 .nav {
