@@ -15,7 +15,13 @@ const app = express();
 
 app.disable('x-powered-by');
 app.use(express.json({ limit: '8kb' }));
-app.use(express.static(path.join(__dirname, '..', 'public'), { maxAge: '5m' }));
+// Cached in production, never cached locally: a 5-minute cache during
+// development means an edited file keeps serving its old copy across
+// reloads (and across tabs — the HTTP cache is per-browser, not per-tab).
+app.use(express.static(path.join(__dirname, '..', 'public'), {
+  maxAge: process.env.NODE_ENV === 'production' ? '5m' : 0,
+  etag: true,
+}));
 
 // --- health probes -----------------------------------------------------------
 app.get('/healthz', (req, res) => res.json({ ok: true }));

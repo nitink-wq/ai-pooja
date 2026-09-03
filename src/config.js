@@ -25,7 +25,7 @@
 // durationMin/includes are shown on the confirm-and-pay screen so the
 // devotee knows exactly what they're buying before paying.
 
-// The purohit who performs every pooja. Shown on the pay screen (photo +
+// The astro who performs every pooja. Shown on the pay screen (photo +
 // credentials) and named in the ritual script itself.
 export const PANDIT = {
   name: 'Pandit Nitin Sharma',
@@ -42,9 +42,9 @@ export const POOJAS = [
     name: 'Navgraha Shanti Pooja',
     description: 'Pacify the nine planetary forces and clear the obstacles they are casting on your life.',
     priceInr: 299,
-    durationMin: 12,
+    durationMin: 5,
     includes: [
-      'Personalised sankalp in your name, gotra and birth details',
+      'Personalised sankalp taken aloud in your name',
       'Navgraha jaap + havan aahuti performed live with you',
       'Ganesh mantra chanted together for your sankalp',
     ],
@@ -67,9 +67,9 @@ export const POOJAS = [
     name: 'Buri Nazar Nivaran Pooja',
     description: 'Remove the evil eye and negative energy that is blocking your peace, health or progress.',
     priceInr: 399,
-    durationMin: 12,
+    durationMin: 5,
     includes: [
-      'Personalised sankalp in your name, gotra and birth details',
+      'Personalised sankalp taken aloud in your name',
       'Rudra jaap + nazar-nivaran havan performed live with you',
       'Ganesh mantra chanted together for your sankalp',
     ],
@@ -92,9 +92,9 @@ export const POOJAS = [
     name: 'Prem Milan Pooja',
     description: 'Invoke divine blessings to resolve conflicts and bring harmony into your relationship.',
     priceInr: 249,
-    durationMin: 12,
+    durationMin: 5,
     includes: [
-      'Personalised sankalp in your name, gotra and birth details',
+      'Personalised sankalp taken aloud in your name',
       'Kamdev & Uma-Maheshwar jaap with havan aahuti',
       'Ganesh mantra chanted together for your sankalp',
     ],
@@ -119,11 +119,11 @@ export function findPooja(id) {
 }
 
 function speech(text) { return { type: 'speech', text }; }
-function mantra(text) { return { type: 'mantra', text }; }
-// opts.kind flags a specific animation on the client (currently 'diya');
-// opts.buttonLabel is the action button's own label — it should read as an
-// instruction to perform the action ("Light the Diya"), not a confirmation
-// of having already done it ("I've done this").
+function mantra(text, uiLabel) { return { type: 'mantra', text, uiLabel: uiLabel }; }
+// opts.kind flags a specific animation on the client (currently 'diya').
+// opts.uiLabel is what the CONTROL BAR shows under the button — always
+// English, short, and phrased as the instruction ("Light the diya"), while
+// `text` stays the Hindi line the astro actually speaks.
 function action(text, opts) {
   return Object.assign({ type: 'action', text }, opts || {});
 }
@@ -137,6 +137,12 @@ var PANDIT_NAME = 'पंडित नितिन';
 // so the app always knows exactly when to pause for a mantra/action and
 // when to auto-advance. gotra defaults to "कश्यप गोत्र" per tradition when
 // unknown, matching temple convention for devotees who don't know theirs.
+//
+// The only detail the astro says back to the devotee is their NAME. Date of
+// birth, birthplace and what they wrote about their problem are used to
+// choose/colour the ritual but are never read aloud — hearing your own
+// personal details recited back is unsettling, and someone may well be
+// within earshot.
 //
 // Shape of the ritual (per user direction, not just an AI-disclosure demo):
 //  1. a short warm greeting — no "I am an AI" preamble
@@ -159,7 +165,7 @@ export function buildFlow(pooja, devotee) {
   flow.push(action(
     'सबसे पहले हम दीप प्रज्वलित करेंगे। स्क्रीन पर दिख रहे दीये को स्पर्श कीजिए — ' +
     'यही आपका दीप प्रज्वलन है।',
-    { kind: 'diya', buttonLabel: '🪔 Light the Diya' }
+    { kind: 'diya', uiLabel: 'Light the diya' }
   ));
 
   // One continuous recitation — sankalp, the pooja's own mantras, and the
@@ -167,9 +173,9 @@ export function buildFlow(pooja, devotee) {
   // instead of several chained ones, so it plays start to finish the way a
   // real Hindi pooja does, with no pause or UI interruption partway through.
   var continuousParts = [
-    'ॐ, अद्य ' + name + ' गोत्रे, ' + gotra + ', ' + name + ' जी, जन्म-तिथि ' + devotee.dob +
-      ', जन्म स्थान ' + devotee.place + ' — यह संकल्प लेते हैं कि ' + devotee.issue + ' हेतु, ' +
-      pooja.poojaLabel + ' का अनुष्ठान श्रद्धा और विश्वास के साथ संपन्न किया जाए। ईश्वर की कृपा बनी रहे।',
+    'ॐ, अद्य ' + gotra + ' में जन्मे ' + name + ' जी के निमित्त यह संकल्प लिया जाता है कि ' +
+      pooja.poojaLabel + ' का अनुष्ठान श्रद्धा और विश्वास के साथ संपन्न किया जाए, और ' + name +
+      ' जी के जीवन की समस्त बाधाएँ दूर हों। ईश्वर की कृपा बनी रहे।',
   ];
   pooja.jaapMantras.forEach(function (m) { continuousParts.push(m); });
   continuousParts.push('अब हम हवन कुंड में अग्नि प्रज्वलित कर आहुति अर्पित करते हैं।');
@@ -179,7 +185,7 @@ export function buildFlow(pooja, devotee) {
   // The one and only moment the devotee chants aloud, in between the
   // narrated portion and the closing — not at the very start or end.
   flow.push(speech(pooja.chantIntro));
-  flow.push(mantra(pooja.jaapMantras[0]));
+  flow.push(mantra(pooja.jaapMantras[0], 'Chant along'));
 
   flow.push(speech(
     'आपकी ' + pooja.poojaLabel + ' सम्पन्न हुई। ॐ शांति शांति शांति। ईश्वर की कृपा सदा आप और ' +

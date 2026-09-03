@@ -152,7 +152,7 @@ button:active:not([disabled]), .poojaCard:active { transform: scale(.96); }
   color: var(--ink-soft); margin-bottom: 9px;
 }
 
-/* the purohit who will actually be on the call — face, credentials and
+/* the astro who will actually be on the call — face, credentials and
    years of experience, so the devotee knows who they're booking */
 .astroCard {
   display: flex; align-items: center; gap: 13px; padding: 13px;
@@ -213,25 +213,28 @@ button:active:not([disabled]), .poojaCard:active { transform: scale(.96); }
 .field input:focus, .field textarea:focus { outline: none; border-color: var(--gold-mid); }
 .field .count { display: block; text-align: right; font-size: 12px; color: var(--ink-soft); margin-top: 5px; }
 
-/* ---- live avatar call ------------------------------------------------------- */
+/* ---- live avatar call -------------------------------------------------------
+   Built like a phone-call screen, not a webpage: the video fills everything
+   above a compact control row, and every prompt is one circular button on
+   that row. Nothing ever covers the astro's face. */
 .fullbleed { padding: 0; }
 .callPanel {
-  position: fixed; inset: 0; z-index: 30; background: #14100C;
+  position: fixed; inset: 0; z-index: 30;
+  background: radial-gradient(120% 60% at 50% 0%, #241A12 0%, #14100C 60%, #0D0A07 100%);
   display: flex; flex-direction: column; align-items: center;
-  padding: calc(14px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom));
-  gap: 12px;
+  padding: calc(10px + env(safe-area-inset-top)) 12px calc(10px + env(safe-area-inset-bottom));
+  gap: 10px;
 }
 .callVideoWrap {
   position: relative; width: 100%; max-width: 460px; flex: 1 1 auto; min-height: 0;
-  border-radius: 22px; overflow: hidden; background: #14100C;
-  box-shadow: 0 14px 36px rgba(0, 0, 0, .4);
+  border-radius: 26px; overflow: hidden; background: #14100C;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .55), inset 0 0 0 1px rgba(255, 191, 110, .16);
+  animation: callVideoIn .5s cubic-bezier(.22, 1, .36, 1) both;
 }
+@keyframes callVideoIn { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
 /* cover fills the frame edge-to-edge (no letterbox bars); object-position
    biases the crop toward the top so the head/hairline is never cut off —
-   any cropping lands on the chest instead, which reads much better. Tested:
-   an aspect-ratio-on-the-wrap approach was tried first but flex-grow
-   overrides aspect-ratio on the main axis in this layout, so it never
-   actually took effect — this position-based fix is simpler and reliable. */
+   any cropping lands on the chest instead, which reads much better. */
 #personaVideo { width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%; display: block; background: #14100C; }
 .mockAvatar { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 .mockAvatarRing {
@@ -248,47 +251,119 @@ button:active:not([disabled]), .poojaCard:active { transform: scale(.96); }
 .callOverlay {
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
   background: radial-gradient(80% 60% at 50% 40%, rgba(60, 34, 16, .55) 0%, rgba(20, 16, 12, .82) 100%);
-  color: #FFF3E4; text-align: center; padding: 24px;
+  color: #FFF3E4; text-align: center; padding: 24px; z-index: 9;
 }
 .callOverlay p { font-size: 15px; font-weight: 600; }
 .spinner { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(255, 191, 110, .3); border-top-color: var(--gold); animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-/* end call: pinned to the bottom-right of the dock, the position users
-   already expect from every other calling app */
-.callControls { width: 100%; max-width: 460px; display: flex; justify-content: flex-end; }
-.endCallBtn {
-  display: flex; align-items: center; gap: 8px;
-  background: var(--danger); color: #fff; border: 0; border-radius: 999px; padding: 12px 20px; cursor: pointer;
-  font-family: var(--sans); font-size: 13.5px; font-weight: 700; box-shadow: 0 8px 20px rgba(211, 47, 47, .45);
-}
-.endCallBtn svg { width: 19px; height: 19px; transform: rotate(133deg); }
 
-/* the dock below the video: whatever the current step asks of the devotee
-   (tap the diya / chant the mantra) sits here, with the end-call control
-   underneath it. The video keeps the whole area above. */
+/* who you're with, floated over the top of the video */
+.callChrome {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 8;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 12px 13px 26px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .55) 0%, rgba(0, 0, 0, 0) 100%);
+  pointer-events: none;
+}
+.livePill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #fff;
+  background: rgba(192, 57, 43, .9); padding: 5px 11px 5px 9px; border-radius: 999px;
+}
+.liveDot { width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: liveBlink 1.6s ease-in-out infinite; }
+@keyframes liveBlink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+.astroChip {
+  display: inline-flex; align-items: center; gap: 8px; max-width: 62%;
+  padding: 4px 12px 4px 4px; border-radius: 999px;
+  background: rgba(20, 16, 12, .5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14);
+}
+.astroChip img {
+  width: 26px; height: 26px; border-radius: 50%; object-fit: cover; object-position: 50% 22%; flex-shrink: 0;
+}
+.astroChip span {
+  font-size: 12.5px; font-weight: 700; color: #FFF3E4;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* subtitle strip: the current instruction (always English) and, when
+   chanting, the mantra itself. Sits at the foot of the video so the buttons
+   below can stay small and unlabelled-by-paragraphs. */
+.callCaption {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 8;
+  padding: 34px 18px 16px; text-align: center; pointer-events: none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(10, 8, 6, .82) 55%, rgba(10, 8, 6, .92) 100%);
+}
+.captionLabel {
+  font-size: 11.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--gold); margin-bottom: 5px;
+}
+.captionText {
+  font-family: var(--serif); font-size: 19px; font-weight: 600; line-height: 1.45; color: #FFF6EA;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, .7);
+}
+.callCaption.captionIn { animation: captionIn .34s cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes captionIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* ---- the control row ---------------------------------------------------- */
 .callDock {
   width: 100%; max-width: 460px; flex-shrink: 0;
-  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 4px;
 }
-.callActionBar { width: 100%; }
-.mantraCard {
-  background: linear-gradient(180deg, rgba(255, 252, 246, .97) 0%, rgba(255, 244, 231, .97) 100%);
-  border-radius: 18px; padding: 16px 18px; text-align: center;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(197, 124, 34, .2);
+.dockStatus {
+  font-size: 12.5px; font-weight: 600; color: rgba(255, 243, 228, .72); min-height: 16px; text-align: center;
 }
-.mantraHint { font-size: 12.5px; font-weight: 700; color: var(--gold-deep); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
-.mantraText { font-family: var(--serif); font-size: 16px; color: var(--ink); line-height: 1.6; margin-bottom: 14px; }
-.mantraBtn {
-  width: 100%; background: var(--gold-deep); color: #fff; border: 0; border-radius: 14px; padding: 14px; cursor: pointer;
-  font-family: var(--sans); font-size: 15px; font-weight: 700; box-shadow: 0 10px 22px -8px rgba(197, 124, 34, .6);
+.dockRow {
+  width: 100%; display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: start;
 }
-.mantraBtn[disabled] { opacity: .65; pointer-events: none; }
-.mantraStatus { font-size: 12.5px; color: var(--ink-soft); margin-top: 10px; min-height: 15px; }
-.mantraHeard { font-size: 12px; color: var(--ink-soft); font-style: italic; margin-top: 4px; }
-.skipBtn {
-  width: 100%; margin-top: 8px; background: transparent; border: 1.5px solid var(--hair);
-  color: var(--ink-soft); border-radius: 14px; padding: 11px; cursor: pointer;
-  font-family: var(--sans); font-size: 13.5px; font-weight: 700;
+.dockSlot { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 7px; min-height: 86px; }
+.ctrl {
+  width: 58px; height: 58px; border-radius: 50%; border: 0; cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; color: #fff;
+  transition: transform .14s cubic-bezier(.34, 1.56, .64, 1), box-shadow .2s ease, opacity .2s ease;
+  animation: ctrlPop .28s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+@keyframes ctrlPop { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: none; } }
+.ctrl:active:not([disabled]) { transform: scale(.88); }
+.ctrl[disabled] { opacity: .55; pointer-events: none; }
+.ctrl svg { width: 24px; height: 24px; }
+.ctrlLabel {
+  font-size: 11.5px; font-weight: 700; color: rgba(255, 243, 228, .78); text-align: center;
+  letter-spacing: .01em;
+}
+
+.ctrlGhost { background: rgba(255, 255, 255, .12); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18); }
+.ctrlGhost svg { width: 20px; height: 20px; }
+
+.ctrlEnd { background: linear-gradient(180deg, #E24C3A 0%, var(--danger) 100%); box-shadow: 0 10px 24px -6px rgba(192, 57, 43, .75); }
+.ctrlEnd svg { transform: rotate(133deg); }
+
+/* the primary action is deliberately the largest, warmest thing on the row */
+.dockSlotMain .ctrl { width: 76px; height: 76px; }
+.ctrlDiya {
+  background: radial-gradient(62% 62% at 50% 34%, #FFECC8 0%, var(--gold) 55%, var(--cta) 100%);
+  box-shadow: 0 14px 30px -8px rgba(244, 87, 34, .7), inset 0 0 0 3px rgba(255, 255, 255, .38);
+  animation: ctrlPop .28s cubic-bezier(.34, 1.56, .64, 1) both, diyaTapPulse 2.4s ease-in-out .3s infinite;
+}
+.ctrlDiya svg { width: 42px; height: 54px; }
+.ctrlDiya .flame { transform-origin: 50% 100%; animation: flicker 1s ease-in-out infinite; }
+@keyframes diyaTapPulse {
+  0%, 100% { box-shadow: 0 14px 30px -8px rgba(244, 87, 34, .7), inset 0 0 0 3px rgba(255, 255, 255, .38), 0 0 0 0 rgba(255, 191, 110, .5); }
+  50% { box-shadow: 0 14px 30px -8px rgba(244, 87, 34, .7), inset 0 0 0 3px rgba(255, 255, 255, .38), 0 0 0 18px rgba(255, 191, 110, 0); }
+}
+.ctrlMic {
+  background: linear-gradient(180deg, #E8A33F 0%, var(--gold-deep) 100%);
+  box-shadow: 0 14px 30px -8px rgba(197, 124, 34, .75), inset 0 0 0 3px rgba(255, 255, 255, .28);
+}
+.ctrlMic svg { width: 30px; height: 30px; }
+/* listening: a live ripple so it's obvious the mic is actually open */
+.ctrlMic.listening {
+  background: linear-gradient(180deg, #F4693A 0%, var(--cta) 100%);
+  animation: micListen 1.3s ease-out infinite;
+}
+@keyframes micListen {
+  0% { box-shadow: 0 14px 30px -8px rgba(244, 87, 34, .7), inset 0 0 0 3px rgba(255, 255, 255, .28), 0 0 0 0 rgba(244, 87, 34, .55); }
+  100% { box-shadow: 0 14px 30px -8px rgba(244, 87, 34, .7), inset 0 0 0 3px rgba(255, 255, 255, .28), 0 0 0 24px rgba(244, 87, 34, 0); }
 }
 
 @keyframes flicker {
@@ -297,53 +372,27 @@ button:active:not([disabled]), .poojaCard:active { transform: scale(.96); }
   60% { transform: scale(.94, 1.04) rotate(-2deg); opacity: 1; }
 }
 
-/* diya action: one large circular tap target instead of a text card */
-.diyaTapWrap { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 8px 0 4px; }
-.diyaTapHint {
-  font-size: 13.5px; font-weight: 600; color: #FFF3E4; text-align: center; line-height: 1.5;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, .6);
-}
-.diyaTapBtn {
-  width: 112px; height: 112px; border-radius: 50%; border: 0; cursor: pointer; flex-shrink: 0;
-  background: radial-gradient(62% 62% at 50% 36%, #FFECC8 0%, var(--gold) 55%, var(--cta) 100%);
-  box-shadow: 0 16px 34px -8px rgba(244, 87, 34, .65), inset 0 0 0 4px rgba(255, 255, 255, .4);
-  display: flex; align-items: center; justify-content: center;
-  animation: diyaTapPulse 2.4s ease-in-out infinite;
-  transition: transform .12s ease;
-}
-.diyaTapBtn:active { transform: scale(.93); }
-.diyaTapBtn[disabled] { opacity: .5; pointer-events: none; animation: none; }
-.diyaTapBtn svg { width: 60px; height: 78px; }
-.diyaTapBtn .flame { transform-origin: 50% 100%; animation: flicker 1s ease-in-out infinite; }
-@keyframes diyaTapPulse {
-  0%, 100% { box-shadow: 0 16px 34px -8px rgba(244, 87, 34, .65), inset 0 0 0 4px rgba(255, 255, 255, .4), 0 0 0 0 rgba(244, 87, 34, .4); }
-  50% { box-shadow: 0 16px 34px -8px rgba(244, 87, 34, .65), inset 0 0 0 4px rgba(255, 255, 255, .4), 0 0 0 20px rgba(244, 87, 34, 0); }
-}
-
-/* diya-lighting animation: a ring of diyas (bigger than the tap button's
-   own icon) rise slowly up over the video and fade out near the top, then
-   the overlay hides itself and the ritual flow advances (see playDiyaRise
-   and buildDiyaRise in app.js) */
-.diyaRise {
-  position: absolute; inset: 0; z-index: 6; pointer-events: none; overflow: hidden;
-}
+/* diya-lighting animation: a ring of diyas rise slowly up over the video and
+   fade out near the top, then the overlay hides itself and the ritual flow
+   advances (see playDiyaRise and buildDiyaRise in app.js) */
+.diyaRise { position: absolute; inset: 0; z-index: 6; pointer-events: none; overflow: hidden; }
 .diyaRiseItem {
-  position: absolute; bottom: 4%; left: calc(2% + (var(--i) * 7.8%));
-  width: 46px; height: 60px; opacity: 0;
-  animation: diyaRiseUp 3.6s ease-in forwards;
-  animation-delay: calc(var(--i) * 160ms);
+  position: absolute; bottom: -14%; width: 44px; height: 58px; opacity: 0;
+  animation-name: diyaRiseUp; animation-timing-function: cubic-bezier(.3, .1, .5, 1);
+  animation-fill-mode: forwards;
 }
 .diyaRiseItem svg { width: 100%; height: 100%; }
 .diyaRiseItem .flame { transform-origin: 50% 100%; animation: flicker .8s ease-in-out infinite; }
 @keyframes diyaRiseUp {
-  0% { transform: translateY(0) scale(.7); opacity: 0; }
-  10% { opacity: 1; }
-  75% { opacity: 1; }
-  100% { transform: translateY(-460%) scale(1.05); opacity: 0; }
+  0% { transform: translate(0, 0) scale(calc(var(--s) * .82)); opacity: 0; }
+  12% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translate(var(--drift), -104vh) scale(var(--s)); opacity: 0; }
 }
 .diyaRiseText {
-  position: absolute; left: 0; right: 0; bottom: 10%; text-align: center;
-  font-size: 13.5px; font-weight: 700; color: #FFF3E4; text-shadow: 0 2px 8px rgba(0, 0, 0, .6);
+  position: absolute; left: 0; right: 0; bottom: 12%; text-align: center;
+  font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--gold); text-shadow: 0 2px 10px rgba(0, 0, 0, .8);
   opacity: 0; animation: diyaTextFade 3.6s ease forwards;
 }
 @keyframes diyaTextFade { 0%, 100% { opacity: 0; } 20%, 80% { opacity: 1; } }
@@ -352,6 +401,13 @@ button:active:not([disabled]), .poojaCard:active { transform: scale(.96); }
 @media (min-width: 720px) {
   .callPanel { padding-top: calc(3vh + env(safe-area-inset-top)); }
   .callVideoWrap { max-height: min(70vh, 640px); }
+}
+/* short phones: give the video every pixel the controls don't need */
+@media (max-height: 700px) {
+  .dockSlot { min-height: 74px; }
+  .ctrl { width: 52px; height: 52px; }
+  .dockSlotMain .ctrl { width: 66px; height: 66px; }
+  .captionText { font-size: 17px; }
 }
 
 /* ---- completion -------------------------------------------------------------- */

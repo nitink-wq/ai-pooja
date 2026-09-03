@@ -9,7 +9,7 @@
   var flow = ['landing']; // navigation stack, for the back button
 
   var POOJAS = [];
-  var PANDIT = null; // the purohit shown on the pay screen, from /api/poojas
+  var PANDIT = null; // the astro shown on the pay screen, from /api/poojas
   var MODE = { razorpayMock: true, anamMock: true };
   var session = {
     pooja: null,
@@ -46,7 +46,10 @@
         scr.classList.add('screenIn');
       }
     });
-    el('navSub').textContent = name === 'call' ? '' : 'AI Pooja';
+    el('navSub').textContent = 'AI Pooja';
+    // The call owns the entire screen — no app header, no back button. A
+    // ritual you can accidentally navigate away from mid-mantra isn't one.
+    document.querySelector('.nav').classList.toggle('hidden', name === 'call');
   }
 
   function goTo(name) {
@@ -103,7 +106,7 @@
   }
 
   // What the devotee is buying: the pooja, how long it runs, and what the
-  // purohit will actually do on the call — shown before they pay, not after.
+  // astro will actually do on the call — shown before they pay, not after.
   function renderOrderSummary(p) {
     el('orderRow').innerHTML =
       '<div class="oMain">' +
@@ -272,7 +275,7 @@
       .catch(function () {
         el('startCallBtn').disabled = false;
         el('startCallBtn').textContent = 'Begin live pooja';
-        alert('Could not connect to your purohit. Please try again.');
+        alert('Could not connect to your astro. Please try again.');
       });
   });
 
@@ -285,7 +288,13 @@
   }
 
   function startCall(data) {
-    setCallStatus('Connecting you to your purohit…');
+    // name the astro on the call itself, not just on the pay screen
+    if (PANDIT) {
+      el('callAstroPhoto').src = PANDIT.photo || 'pandit.jpg';
+      el('callAstroName').textContent = PANDIT.name || '';
+    }
+    hideActionBar();
+    setCallStatus('Connecting you to your astro…');
     if (data.mock) return mockCall(data.flow);
     realCall(data.sessionToken, data.flow);
   }
@@ -388,53 +397,103 @@
     }
   }
 
+  // ---- call UI: one control row, one caption strip -------------------------
+  // The dock only ever holds circular controls on a single row next to End
+  // Pooja. What each control is *for* is explained in the caption strip over
+  // the video (English label + the mantra itself), so the buttons stay small
+  // and the astro's video is never covered by a card.
+  function show(id, on) { el(id).classList.toggle('hidden', !on); }
+
+  function setCaption(label, text) {
+    if (!label && !text) { show('callCaption', false); return; }
+    el('captionLabel').textContent = label || '';
+    el('captionText').textContent = text || '';
+    show('captionText', !!text);
+    show('callCaption', true);
+    // replay the entrance each time the prompt changes
+    var c = el('callCaption');
+    c.classList.remove('captionIn');
+    void c.offsetWidth;
+    c.classList.add('captionIn');
+  }
+
+  function setMainControl(kind, label) {
+    show('diyaTapBtn', kind === 'diya');
+    show('mantraBtn', kind === 'mic');
+    el('mainLabel').textContent = label || '';
+    show('mainLabel', !!kind && !!label);
+  }
+
+  function setSkipVisible(on) {
+    show('skipMantraBtn', on);
+    show('skipLabel', on);
+  }
+
+  function setDockStatus(msg) { el('dockStatus').textContent = msg || ''; }
+
   function hideActionBar() {
-    el('callActionBar').classList.add('hidden');
-    el('diyaTapWrap').classList.add('hidden');
-    el('mantraCard').classList.add('hidden');
-    el('diyaRise').classList.add('hidden');
+    setMainControl(null, '');
+    setSkipVisible(false);
+    setCaption('', '');
+    setDockStatus('');
+    show('diyaRise', false);
     stopMantraRecognition();
   }
 
   // Every 'action' segment is completed by tapping on screen — the ritual
   // never asks the devotee for a physical prop or off-screen gesture, so the
-  // diya tap target is the only action UI there is.
+  // diya tap target is the only action UI there is. Its label is always
+  // English even though the astro speaks Hindi.
   function showActionCard(seg) {
     stopMantraRecognition();
-    el('callActionBar').classList.remove('hidden');
-    el('mantraCard').classList.add('hidden');
-    el('diyaRise').classList.add('hidden');
-    el('diyaTapWrap').classList.remove('hidden');
-    el('diyaTapHint').textContent = seg.text || 'Tap to light the diya.';
+    show('diyaRise', false);
+    setSkipVisible(false);
+    // no caption here — the button's own label already says it, and a
+    // duplicate line over the video is just noise
+    setCaption('', '');
+    setDockStatus('Tap the diya to light it');
+    setMainControl('diya', seg.uiLabel || 'Light the diya');
     el('diyaTapBtn').disabled = false;
   }
 
   function showMantraCard(seg) {
     session.currentMantraTarget = seg.text;
     session.mantraAttempts = 0;
-    el('callActionBar').classList.remove('hidden');
-    el('diyaTapWrap').classList.add('hidden');
-    el('mantraCard').classList.remove('hidden');
-    el('mantraText').textContent = seg.text;
-    el('mantraHeard').textContent = '';
-    el('mantraHeard').classList.add('hidden');
-    el('mantraStatus').textContent = '';
+    show('diyaRise', false);
+    setCaption('Chant this mantra', seg.text);
+    setMainControl('mic', seg.uiLabel || 'Chant along');
+    setSkipVisible(false);
+    setDockStatus('Tap the mic and chant along with the astro');
     el('mantraBtn').disabled = false;
-    el('mantraBtn').textContent = '🎙️ Chant now';
-    el('skipMantraBtn').classList.add('hidden');
+    el('mantraBtn').classList.remove('listening');
   }
 
   // A ring of diyas (bigger than the tap button's own icon) rises slowly
   // over the video when tapped, then the flow advances. Built once here
   // (rather than hardcoded in index.html) so the count/size is easy to tune.
-  var DIYA_RISE_COUNT = 13;
+  var DIYA_RISE_COUNT = 14;
   var DIYA_RISE_MS = 3600;
+  // Each diya gets its own lane, delay, size and drift so the group rises
+  // like floating lamps rather than a single diagonal conveyor belt. The
+  // values are pseudo-random but seeded per index, so the spread is varied
+  // yet identical every run (easy to eyeball and tune).
   function buildDiyaRise() {
     var wrap = el('diyaRise');
     var html = '';
     for (var i = 0; i < DIYA_RISE_COUNT; i++) {
+      var r = Math.abs(Math.sin((i + 1) * 12.9898) * 43758.5453) % 1;
+      var r2 = Math.abs(Math.sin((i + 1) * 78.233) * 12345.6789) % 1;
+      // lanes spread edge to edge, then nudged by r so they don't line up
+      var lane = (i / DIYA_RISE_COUNT) * 92 + r * 6;
+      var delay = (r2 * 1000).toFixed(0);
+      var scale = (0.62 + r * 0.55).toFixed(2);
+      var drift = (r2 * 44 - 22).toFixed(0);
+      var dur = (2600 + r2 * 1100).toFixed(0);
       html +=
-        '<div class="diyaRiseItem" style="--i:' + i + '">' +
+        '<div class="diyaRiseItem" style="' +
+          'left:' + lane.toFixed(1) + '%;' +
+          '--s:' + scale + ';--drift:' + drift + 'px;' +
+          'animation-delay:' + delay + 'ms;animation-duration:' + dur + 'ms">' +
           '<svg viewBox="0 0 56 72" fill="none">' +
             '<ellipse cx="28" cy="60" rx="26" ry="9" fill="#C57C22"/>' +
             '<ellipse cx="28" cy="57" rx="20" ry="6" fill="#FFBF6E"/>' +
@@ -442,13 +501,16 @@
           '</svg>' +
         '</div>';
     }
-    html += '<p class="diyaRiseText">दीप प्रज्वलित 🙏 Diya lit</p>';
     wrap.innerHTML = html;
   }
 
+  // Tapping the diya makes the control itself vanish (it has served its
+  // purpose) and hands the screen over to the rising-diya animation.
   function playDiyaRise() {
     el('diyaTapBtn').disabled = true;
-    el('callActionBar').classList.add('hidden');
+    setMainControl(null, '');
+    setCaption('', '');
+    setDockStatus('Diya lit \u2014 the pooja begins');
     el('diyaRise').classList.remove('hidden');
     setTimeout(function () {
       el('diyaRise').classList.add('hidden');
@@ -508,12 +570,12 @@
   // awaitingSegmentSpeech is false while waiting on a chant, so it can't
   // interfere with ritual-flow advancement.
   function markMantraAttemptFailed(msg) {
-    el('mantraStatus').textContent = msg;
+    setDockStatus(msg);
     el('mantraBtn').disabled = false;
-    el('mantraBtn').textContent = '🎙️ Chant now';
+    el('mantraBtn').classList.remove('listening');
     session.mantraAttempts += 1;
     if (session.mantraAttempts >= 1) {
-      el('skipMantraBtn').classList.remove('hidden');
+      setSkipVisible(true);
     }
     if (session.anamClient && typeof session.anamClient.talk === 'function') {
       session.anamClient.talk('कोई बात नहीं, कृपया मंत्र फिर से बोलने का प्रयास करें।');
@@ -554,11 +616,9 @@
       settled = true;
       clearTimers();
       var result = mantraSimilarity(said, session.currentMantraTarget);
-      el('mantraHeard').textContent = said ? 'Heard: "' + said + '"' : '';
-      el('mantraHeard').classList.toggle('hidden', !said);
       var minMatches = Math.min(2, result.targetWordCount);
       if (said && result.score >= 0.5 && result.matches >= minMatches) {
-        el('mantraStatus').textContent = 'Mantra accepted ✓';
+        setDockStatus('Mantra accepted ✓');
         confirmMantraDone();
       } else {
         markMantraAttemptFailed(said ? 'Not clear — please chant the mantra again.' : 'Could not hear you — please try again.');
@@ -566,10 +626,8 @@
     }
 
     el('mantraBtn').disabled = true;
-    el('mantraBtn').textContent = 'Listening…';
-    el('mantraStatus').textContent = '';
-    el('mantraHeard').textContent = '';
-    el('mantraHeard').classList.add('hidden');
+    el('mantraBtn').classList.add('listening');
+    setDockStatus('Listening…');
 
     rec.onresult = function (e) {
       for (var i = e.resultIndex; i < e.results.length; i++) {

@@ -1,7 +1,7 @@
 # AI Pooja
 
 Self-serve flow: pick a pooja → pay via Razorpay → fill a short form → get
-live-connected to an Anam.ai AI-avatar purohit who performs the ritual with
+live-connected to an Anam.ai AI-avatar astro who performs the ritual with
 you, by name.
 
 Stateless Node/Express server + a vanilla-JS webview client, matching the

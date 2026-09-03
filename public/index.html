@@ -36,7 +36,7 @@
     <section id="screen-landing" class="screen">
       <div class="intro">
         <h1>Book a live AI Pooja</h1>
-        <p>Choose a pooja, pay securely, and get live-connected to an AI astro-purohit who performs it with you, by name.</p>
+        <p>Choose a pooja, pay securely, and get live-connected to an AI astro who performs it with you, by name.</p>
       </div>
       <div class="poojaList" id="poojaList">
         <div class="poojaCard skel" aria-hidden="true"></div>
@@ -56,7 +56,7 @@
         <p class="poojaBlurb" id="poojaBlurb"></p>
         <ul class="includeList" id="includeList"></ul>
 
-        <p class="sectionLabel">Your purohit</p>
+        <p class="sectionLabel">Your astro</p>
         <div class="astroCard">
           <img class="astroPhoto" id="astroPhoto" alt="" width="72" height="72">
           <div class="astroMeta">
@@ -83,7 +83,7 @@
     <!-- ---- 3. devotee details form ------------------------------------------ -->
     <section id="screen-form" class="screen hidden">
       <div class="panel">
-        <h2 class="serif">A few details for the purohit</h2>
+        <h2 class="serif">A few details for your astro</h2>
         <p class="fine">Used only to personalise your live pooja. Not stored after your call.</p>
         <form id="detailsForm" novalidate>
           <label class="field">
@@ -100,7 +100,7 @@
           </label>
           <label class="field">
             <span>What's troubling you?</span>
-            <textarea name="issue" required maxlength="300" rows="4" placeholder="Tell the purohit what you'd like this pooja to help with"></textarea>
+            <textarea name="issue" required maxlength="300" rows="4" placeholder="Tell your astro what you'd like this pooja to help with"></textarea>
             <span class="count" id="issueCount">0 / 300</span>
           </label>
           <button class="cta" type="submit" id="startCallBtn">Begin live pooja</button>
@@ -109,6 +109,10 @@
     </section>
 
     <!-- ---- 4. live avatar call ----------------------------------------------- -->
+    <!-- The call takes the whole phone: video fills the top, and a compact
+         control bar sits at the bottom. Every prompt is one circular button
+         on the same row as End Pooja, the way a phone call UI works —
+         nothing overlays or shrinks the astro's video. -->
     <section id="screen-call" class="screen hidden fullbleed">
       <div class="callPanel">
         <div class="callVideoWrap" id="callVideoWrap">
@@ -118,7 +122,7 @@
           </div>
           <div class="callOverlay" id="callOverlay">
             <div class="spinner"></div>
-            <p id="callStatus">Connecting you to your purohit…</p>
+            <p id="callStatus">Connecting you to your astro…</p>
           </div>
 
           <!-- diya-lighting animation: a ring of diyas rising up over the
@@ -126,42 +130,60 @@
                so the count/size can be tuned in one place. -->
           <div class="diyaRise hidden" id="diyaRise"></div>
 
+          <!-- who you're with + a live badge, floated over the video top -->
+          <div class="callChrome">
+            <span class="livePill"><span class="liveDot"></span>Live</span>
+            <span class="astroChip" id="astroChip">
+              <img id="callAstroPhoto" alt="">
+              <span id="callAstroName"></span>
+            </span>
+          </div>
+
+          <!-- subtitle strip: what the astro is asking for right now -->
+          <div class="callCaption hidden" id="callCaption">
+            <p class="captionLabel" id="captionLabel"></p>
+            <p class="captionText" id="captionText"></p>
+          </div>
         </div>
 
-        <!-- everything the devotee can do sits in a dock BELOW the video:
-             the prompt for the current step, and the end-call control pinned
-             bottom-right. Every action here is completable by tapping — the
-             ritual never asks for a physical prop. -->
+        <!-- one control row: [secondary] [primary action] [end call] -->
         <div class="callDock">
-          <div class="callActionBar hidden" id="callActionBar">
-            <!-- diya action: a single large tap target instead of a text card -->
-            <div class="diyaTapWrap hidden" id="diyaTapWrap">
-              <p class="diyaTapHint" id="diyaTapHint"></p>
-              <button class="diyaTapBtn" id="diyaTapBtn" aria-label="Light the diya">
-                <svg viewBox="0 0 56 72" fill="none">
+          <p class="dockStatus" id="dockStatus"></p>
+          <div class="dockRow">
+            <div class="dockSlot">
+              <button class="ctrl ctrlGhost hidden" id="skipMantraBtn" aria-label="Skip this mantra">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M5 5l9 7-9 7V5z" fill="currentColor"/><rect x="16.5" y="5" width="2.6" height="14" rx="1.3" fill="currentColor"/>
+                </svg>
+              </button>
+              <span class="ctrlLabel hidden" id="skipLabel">Skip</span>
+            </div>
+
+            <div class="dockSlot dockSlotMain">
+              <button class="ctrl ctrlDiya hidden" id="diyaTapBtn" aria-label="Light the diya">
+                <svg viewBox="0 0 56 72" fill="none" aria-hidden="true">
                   <ellipse cx="28" cy="60" rx="26" ry="9" fill="#C57C22"/>
                   <ellipse cx="28" cy="57" rx="20" ry="6" fill="#FFBF6E"/>
                   <path class="flame" d="M28 12c6 8 9 14 9 20a9 9 0 11-18 0c0-6 3-12 9-20z" fill="url(#flameGradShared)"/>
                 </svg>
               </button>
+              <button class="ctrl ctrlMic hidden" id="mantraBtn" aria-label="Chant now">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <rect x="9" y="2.5" width="6" height="11.5" rx="3" fill="currentColor"/>
+                  <path d="M5.5 11.5a6.5 6.5 0 0013 0M12 18v3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </button>
+              <span class="ctrlLabel hidden" id="mainLabel"></span>
             </div>
-            <div class="mantraCard hidden" id="mantraCard">
-              <p class="mantraHint">Chant this mantra</p>
-              <p class="mantraText" id="mantraText"></p>
-              <button class="mantraBtn" id="mantraBtn">🎙️ Chant now</button>
-              <button class="skipBtn hidden" id="skipMantraBtn">Skip this mantra →</button>
-              <p class="mantraStatus" id="mantraStatus"></p>
-              <p class="mantraHeard hidden" id="mantraHeard"></p>
-            </div>
-          </div>
 
-          <div class="callControls">
-            <button class="endCallBtn" id="endCallBtn" aria-label="End pooja">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M2.5 9.8c5.4-4 13.6-4 19 0 1 .8 1.2 2.2.4 3.2l-1.2 1.5c-.6.8-1.7 1-2.6.6l-2.5-1.2c-.7-.4-1.1-1.1-1-1.9l.1-1.3c-2-.6-4.2-.6-6.3 0l.1 1.3c.1.8-.3 1.5-1 1.9l-2.5 1.2c-.9.4-2 .2-2.6-.6L1.7 13c-.8-1-.6-2.4.8-3.2z" fill="currentColor"/>
-              </svg>
-              <span>End Pooja</span>
-            </button>
+            <div class="dockSlot">
+              <button class="ctrl ctrlEnd" id="endCallBtn" aria-label="End pooja">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M2.5 9.8c5.4-4 13.6-4 19 0 1 .8 1.2 2.2.4 3.2l-1.2 1.5c-.6.8-1.7 1-2.6.6l-2.5-1.2c-.7-.4-1.1-1.1-1-1.9l.1-1.3c-2-.6-4.2-.6-6.3 0l.1 1.3c.1.8-.3 1.5-1 1.9l-2.5 1.2c-.9.4-2 .2-2.6-.6L1.7 13c-.8-1-.6-2.4.8-3.2z" fill="currentColor"/>
+                </svg>
+              </button>
+              <span class="ctrlLabel">End</span>
+            </div>
           </div>
         </div>
       </div>
@@ -174,7 +196,7 @@
           <svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="24" fill="#F45722"/><path d="M14 24.5l7 7 13-14" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
         <h2 class="serif">Aapki pooja poori hui</h2>
-        <p>May this bring you peace and clarity. Your purohit's blessings stay with you.</p>
+        <p>May this bring you peace and clarity. Your astro's blessings stay with you.</p>
         <button class="cta" id="homeBtn">Return home</button>
       </div>
     </section>
