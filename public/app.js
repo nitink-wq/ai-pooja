@@ -21,6 +21,7 @@
     currentSegment: null,
     awaitingSegmentSpeech: false,
     currentMantraTarget: '',
+    mantraAttempts: 0,
     endScheduled: false,
   };
 
@@ -353,7 +354,7 @@
     el('callActionBar').classList.add('hidden');
     el('actionCard').classList.add('hidden');
     el('mantraCard').classList.add('hidden');
-    el('diyaFlame').classList.add('hidden');
+    el('diyaRise').classList.add('hidden');
     stopMantraRecognition();
   }
 
@@ -367,11 +368,12 @@
     el('actionDoneBtn').disabled = false;
     el('actionDoneBtn').classList.remove('hidden');
     el('actionDoneBtn').dataset.kind = seg.kind || '';
-    el('diyaFlame').classList.add('hidden');
+    el('diyaRise').classList.add('hidden');
   }
 
   function showMantraCard(seg) {
     session.currentMantraTarget = seg.text;
+    session.mantraAttempts = 0;
     el('callActionBar').classList.remove('hidden');
     el('actionCard').classList.add('hidden');
     el('mantraCard').classList.remove('hidden');
@@ -381,25 +383,30 @@
     el('mantraStatus').textContent = '';
     el('mantraBtn').disabled = false;
     el('mantraBtn').textContent = '🎙️ Chant now';
+    el('skipMantraBtn').classList.add('hidden');
   }
 
-  // Tapping the button for a 'diya' action plays a short flame animation
-  // before advancing, so lighting the diya feels like an action rather than
-  // just an acknowledgement.
+  // Tapping the button for a 'diya' action plays diyas rising up over the
+  // video (not swapping the button for a static icon) before advancing, so
+  // lighting the diya feels like a real action rather than just a tap.
   function confirmActionDone() {
     var kind = el('actionDoneBtn').dataset.kind;
     if (kind === 'diya') {
-      el('actionDoneBtn').disabled = true;
-      el('actionDoneBtn').classList.add('hidden');
-      el('diyaFlame').classList.remove('hidden');
-      setTimeout(function () {
-        hideActionBar();
-        advanceFlow();
-      }, 1600);
+      playDiyaRise();
       return;
     }
     hideActionBar();
     advanceFlow();
+  }
+
+  function playDiyaRise() {
+    el('callActionBar').classList.add('hidden');
+    el('diyaRise').classList.remove('hidden');
+    setTimeout(function () {
+      el('diyaRise').classList.add('hidden');
+      hideActionBar();
+      advanceFlow();
+    }, 2100);
   }
 
   function confirmMantraDone() {
@@ -440,6 +447,19 @@
     }
   }
 
+  // Marks one failed/inconclusive chant attempt: resets the button and, from
+  // the first failure onward, reveals a skip button so the devotee is never
+  // stuck retrying a mantra recognition never confirms.
+  function markMantraAttemptFailed(msg) {
+    el('mantraStatus').textContent = msg;
+    el('mantraBtn').disabled = false;
+    el('mantraBtn').textContent = '🎙️ Chant now';
+    session.mantraAttempts += 1;
+    if (session.mantraAttempts >= 1) {
+      el('skipMantraBtn').classList.remove('hidden');
+    }
+  }
+
   function startMantraRecognition() {
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
@@ -452,38 +472,81 @@
     activeRecognition = rec;
     rec.lang = 'hi-IN';
     rec.continuous = false;
-    rec.interimResults = false;
+    // interimResults=true so we always have *something* to judge even if
+    // the browser/WebView never marks a result isFinal before ending —
+    // that gap is what caused "mic listens but nothing gets sent": with
+    // interimResults off and no final result, onresult simply never fired.
+    rec.interimResults = true;
     rec.maxAlternatives = 1;
+
+    var settled = false;
+    var lastTranscript = '';
+    var hardTimeout = null;
+    var endGrace = null;
+
+    function clearTimers() {
+      if (hardTimeout) { clearTimeout(hardTimeout); hardTimeout = null; }
+      if (endGrace) { clearTimeout(endGrace); endGrace = null; }
+    }
+
+    function judge(said) {
+      if (settled) return;
+      settled = true;
+      clearTimers();
+      var result = mantraSimilarity(said, session.currentMantraTarget);
+      el('mantraHeard').textContent = said ? 'Heard: "' + said + '"' : '';
+      el('mantraHeard').classList.toggle('hidden', !said);
+      var minMatches = Math.min(2, result.targetWordCount);
+      if (said && result.score >= 0.5 && result.matches >= minMatches) {
+        el('mantraStatus').textContent = 'Mantra accepted ✓';
+        confirmMantraDone();
+      } else {
+        markMantraAttemptFailed(said ? 'Not clear — please chant the mantra again.' : 'Could not hear you — please try again.');
+      }
+    }
+
     el('mantraBtn').disabled = true;
     el('mantraBtn').textContent = 'Listening…';
     el('mantraStatus').textContent = '';
     el('mantraHeard').textContent = '';
     el('mantraHeard').classList.add('hidden');
+
     rec.onresult = function (e) {
-      var said = (e.results && e.results[0] && e.results[0][0] && e.results[0][0].transcript) || '';
-      var result = mantraSimilarity(said, session.currentMantraTarget);
-      el('mantraHeard').textContent = 'Heard: "' + said + '"';
-      el('mantraHeard').classList.remove('hidden');
-      // Require both a decent overlap score AND at least 2 matched words (or
-      // all of them, if the mantra is only 1-2 words) — a bare score
-      // threshold alone can pass off a single common word like "ओम्"/"नमः"
-      // shared with almost every mantra.
-      var minMatches = Math.min(2, result.targetWordCount);
-      if (result.score >= 0.5 && result.matches >= minMatches) {
-        el('mantraStatus').textContent = 'Mantra accepted ✓';
-        confirmMantraDone();
-      } else {
-        el('mantraStatus').textContent = 'Not clear — please chant the mantra again.';
-        el('mantraBtn').disabled = false;
-        el('mantraBtn').textContent = '🎙️ Chant now';
+      for (var i = e.resultIndex; i < e.results.length; i++) {
+        var alt = e.results[i] && e.results[i][0];
+        if (!alt) continue;
+        lastTranscript = alt.transcript || lastTranscript;
+        if (e.results[i].isFinal) {
+          judge(lastTranscript);
+          try { rec.stop(); } catch (err) { /* already stopping */ }
+          return;
+        }
       }
     };
-    rec.onerror = function () {
-      el('mantraStatus').textContent = 'Could not hear you — press the button again.';
-      el('mantraBtn').disabled = false;
-      el('mantraBtn').textContent = '🎙️ Chant now';
+    // 'no-speech'/'aborted'/etc. — judge whatever interim transcript was
+    // captured rather than dropping it; some mobile WebViews error out
+    // before ever marking a result isFinal.
+    rec.onerror = function () { judge(lastTranscript); };
+    rec.onend = function () {
+      activeRecognition = null;
+      clearTimers();
+      // If the session ended with no isFinal result and no error either
+      // (the exact "listens but never sends" symptom), fall back to
+      // whatever interim transcript we captured, or a clear failure.
+      if (!settled) judge(lastTranscript);
     };
-    rec.onend = function () { activeRecognition = null; };
+
+    // Safety net: some WebViews can leave the recognizer hanging forever
+    // with none of onresult/onerror/onend ever firing. Force a stop after
+    // 7s, then bail to a manual retry after a short grace period so the
+    // button never stays stuck on "Listening…" indefinitely.
+    hardTimeout = setTimeout(function () {
+      try { rec.stop(); } catch (err) { /* already stopped */ }
+      endGrace = setTimeout(function () {
+        if (!settled) { settled = true; markMantraAttemptFailed('Could not hear you — please try again.'); }
+      }, 1500);
+    }, 7000);
+
     try { rec.start(); } catch (e) { confirmMantraDone(); }
   }
 
@@ -504,6 +567,7 @@
     session.currentSegment = null;
     session.awaitingSegmentSpeech = false;
     session.currentMantraTarget = '';
+    session.mantraAttempts = 0;
     session.endScheduled = false;
     // Reset the stack rather than pushing: the call can't be resumed, so
     // the back button from the completion screen should land on landing,
@@ -515,6 +579,10 @@
   el('endCallBtn').addEventListener('click', endCall);
   el('actionDoneBtn').addEventListener('click', confirmActionDone);
   el('mantraBtn').addEventListener('click', startMantraRecognition);
+  el('skipMantraBtn').addEventListener('click', function () {
+    stopMantraRecognition();
+    confirmMantraDone();
+  });
 
   // ---- 5. completion -------------------------------------------------------------
   el('homeBtn').addEventListener('click', function () {

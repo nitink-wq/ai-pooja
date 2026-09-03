@@ -28,6 +28,7 @@ export const POOJAS = [
     priceInr: 299,
     poojaLabel: 'नवग्रह शांति पूजा',
     ritualContext: 'नवग्रह शांति पूजा — नौ ग्रहों को शांत करने और उनके अशुभ प्रभाव से उत्पन्न बाधाओं को दूर करने हेतु',
+    chantIntro: 'अब मैं जो मंत्र बोलूं, उसे आप मेरे साथ ऊँची और स्पष्ट आवाज़ में तीन बार दोहराएँ — इससे नवग्रहों की शांति और उनका शुभ प्रभाव प्राप्त होता है।',
     jaapMantras: [
       'ओम् गं गणपतये नमः',
       'ओम् ऐं ह्रीं क्लीं नवग्रह देवताभ्यो नमः',
@@ -46,6 +47,7 @@ export const POOJAS = [
     priceInr: 399,
     poojaLabel: 'बुरी नज़र निवारण पूजा',
     ritualContext: 'बुरी नज़र निवारण पूजा — बुरी नज़र और नकारात्मक ऊर्जा को दूर करने हेतु',
+    chantIntro: 'अब मैं जो मंत्र बोलूं, उसे आप मेरे साथ श्रद्धापूर्वक तीन बार दोहराएँ — इससे बुरी नज़र और नकारात्मक ऊर्जा दूर होती है।',
     jaapMantras: [
       'ओम् गं गणपतये नमः',
       'ओम् नमो भगवते रुद्राय नमः',
@@ -64,6 +66,7 @@ export const POOJAS = [
     priceInr: 249,
     poojaLabel: 'प्रेम मिलन पूजा',
     ritualContext: 'प्रेम मिलन पूजा — रिश्ते में सामंजस्य, समझ और मिलन हेतु दिव्य आशीर्वाद के आह्वान के लिए',
+    chantIntro: 'अब मैं जो मंत्र बोलूं, उसे आप प्रेमपूर्वक मन से तीन बार दोहराएँ — इससे आपके रिश्ते में सामंजस्य और मिलन का आशीर्वाद मिलता है।',
     jaapMantras: [
       'ओम् गं गणपतये नमः',
       'ओम् कामदेवाय विद्महे पुष्पबाणाय धीमहि। तन्नो अनंगः प्रचोदयात्।',
@@ -112,6 +115,10 @@ export function buildFlow(pooja, devotee) {
     { kind: 'diya', buttonLabel: '🪔 Light the Diya' }
   ));
 
+  // Tell the devotee what to do with the mantra *before* saying it — without
+  // this the persona used to jump straight from the diya to reciting the
+  // mantra with no instruction, which read as one confusing monologue.
+  flow.push(speech(pooja.chantIntro));
   flow.push(mantra(pooja.jaapMantras[0]));
 
   flow.push(speech(
@@ -121,8 +128,11 @@ export function buildFlow(pooja, devotee) {
     'श्रद्धा और विश्वास के साथ संपन्न किया जाए। ईश्वर की कृपा बनी रहे।'
   ));
 
-  for (var i = 1; i < pooja.jaapMantras.length; i++) {
-    flow.push(mantra(pooja.jaapMantras[i]));
+  if (pooja.jaapMantras.length > 1) {
+    flow.push(speech('अब आगे के मंत्र भी उसी प्रकार, एक-एक करके मेरे साथ दोहराएँ।'));
+    for (var i = 1; i < pooja.jaapMantras.length; i++) {
+      flow.push(mantra(pooja.jaapMantras[i]));
+    }
   }
 
   flow.push(speech('अब मैं हवन कुंड में अग्नि प्रज्वलित कर, आहुति अर्पित करता हूँ।'));

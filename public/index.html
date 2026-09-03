@@ -91,34 +91,70 @@
             <div class="spinner"></div>
             <p id="callStatus">Connecting you to your purohit…</p>
           </div>
-        </div>
-        <div class="callActionBar hidden" id="callActionBar">
-          <div class="actionCard hidden" id="actionCard">
-            <p class="actionHint">The purohit asked you to</p>
-            <p class="actionLabel" id="actionLabel"></p>
-            <button class="actionBtn" id="actionDoneBtn">I've done this ✓</button>
-            <div class="diyaFlame hidden" id="diyaFlame">
+
+          <!-- diya-lighting animation: plays over the video (not cropping it)
+               when the devotee taps "Light the Diya" -->
+          <div class="diyaRise hidden" id="diyaRise">
+            <div class="diyaRiseItem" style="--i:0">
               <svg viewBox="0 0 56 72" fill="none">
                 <ellipse cx="28" cy="60" rx="26" ry="9" fill="#C57C22"/>
                 <ellipse cx="28" cy="57" rx="20" ry="6" fill="#FFBF6E"/>
-                <path class="flame" d="M28 12c6 8 9 14 9 20a9 9 0 11-18 0c0-6 3-12 9-20z" fill="url(#flameGrad)"/>
-                <defs>
-                  <linearGradient id="flameGrad" x1="28" y1="12" x2="28" y2="41" gradientUnits="userSpaceOnUse">
-                    <stop offset="0" stop-color="#FFF3D6"/>
-                    <stop offset=".45" stop-color="#FFBF6E"/>
-                    <stop offset="1" stop-color="#F45722"/>
-                  </linearGradient>
-                </defs>
+                <path class="flame" d="M28 12c6 8 9 14 9 20a9 9 0 11-18 0c0-6 3-12 9-20z" fill="url(#flameGrad0)"/>
+                <defs><linearGradient id="flameGrad0" x1="28" y1="12" x2="28" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFF3D6"/><stop offset=".45" stop-color="#FFBF6E"/><stop offset="1" stop-color="#F45722"/></linearGradient></defs>
               </svg>
-              <p>Diya lit 🙏</p>
             </div>
+            <div class="diyaRiseItem" style="--i:1">
+              <svg viewBox="0 0 56 72" fill="none">
+                <ellipse cx="28" cy="60" rx="26" ry="9" fill="#C57C22"/>
+                <ellipse cx="28" cy="57" rx="20" ry="6" fill="#FFBF6E"/>
+                <path class="flame" d="M28 12c6 8 9 14 9 20a9 9 0 11-18 0c0-6 3-12 9-20z" fill="url(#flameGrad1)"/>
+                <defs><linearGradient id="flameGrad1" x1="28" y1="12" x2="28" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFF3D6"/><stop offset=".45" stop-color="#FFBF6E"/><stop offset="1" stop-color="#F45722"/></linearGradient></defs>
+              </svg>
+            </div>
+            <div class="diyaRiseItem" style="--i:2">
+              <svg viewBox="0 0 56 72" fill="none">
+                <ellipse cx="28" cy="60" rx="26" ry="9" fill="#C57C22"/>
+                <ellipse cx="28" cy="57" rx="20" ry="6" fill="#FFBF6E"/>
+                <path class="flame" d="M28 12c6 8 9 14 9 20a9 9 0 11-18 0c0-6 3-12 9-20z" fill="url(#flameGrad2)"/>
+                <defs><linearGradient id="flameGrad2" x1="28" y1="12" x2="28" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFF3D6"/><stop offset=".45" stop-color="#FFBF6E"/><stop offset="1" stop-color="#F45722"/></linearGradient></defs>
+              </svg>
+            </div>
+            <div class="diyaRiseItem" style="--i:3">
+              <svg viewBox="0 0 56 72" fill="none">
+                <ellipse cx="28" cy="60" rx="26" ry="9" fill="#C57C22"/>
+                <ellipse cx="28" cy="57" rx="20" ry="6" fill="#FFBF6E"/>
+                <path class="flame" d="M28 12c6 8 9 14 9 20a9 9 0 11-18 0c0-6 3-12 9-20z" fill="url(#flameGrad3)"/>
+                <defs><linearGradient id="flameGrad3" x1="28" y1="12" x2="28" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFF3D6"/><stop offset=".45" stop-color="#FFBF6E"/><stop offset="1" stop-color="#F45722"/></linearGradient></defs>
+              </svg>
+            </div>
+            <div class="diyaRiseItem" style="--i:4">
+              <svg viewBox="0 0 56 72" fill="none">
+                <ellipse cx="28" cy="60" rx="26" ry="9" fill="#C57C22"/>
+                <ellipse cx="28" cy="57" rx="20" ry="6" fill="#FFBF6E"/>
+                <path class="flame" d="M28 12c6 8 9 14 9 20a9 9 0 11-18 0c0-6 3-12 9-20z" fill="url(#flameGrad4)"/>
+                <defs><linearGradient id="flameGrad4" x1="28" y1="12" x2="28" y2="41" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFF3D6"/><stop offset=".45" stop-color="#FFBF6E"/><stop offset="1" stop-color="#F45722"/></linearGradient></defs>
+              </svg>
+            </div>
+            <p class="diyaRiseText">दीप प्रज्वलित 🙏 Diya lit</p>
           </div>
-          <div class="mantraCard hidden" id="mantraCard">
-            <p class="mantraHint">Chant this mantra</p>
-            <p class="mantraText" id="mantraText"></p>
-            <button class="mantraBtn" id="mantraBtn">🎙️ Chant now</button>
-            <p class="mantraStatus" id="mantraStatus"></p>
-            <p class="mantraHeard hidden" id="mantraHeard"></p>
+
+          <!-- interactive prompts overlay the video at the bottom instead of
+               taking a separate strip below it, so the purohit's video is
+               never squeezed/cropped to make room -->
+          <div class="callActionBar hidden" id="callActionBar">
+            <div class="actionCard hidden" id="actionCard">
+              <p class="actionHint">The purohit asked you to</p>
+              <p class="actionLabel" id="actionLabel"></p>
+              <button class="actionBtn" id="actionDoneBtn">I've done this ✓</button>
+            </div>
+            <div class="mantraCard hidden" id="mantraCard">
+              <p class="mantraHint">Chant this mantra</p>
+              <p class="mantraText" id="mantraText"></p>
+              <button class="mantraBtn" id="mantraBtn">🎙️ Chant now</button>
+              <button class="skipBtn hidden" id="skipMantraBtn">Skip this mantra →</button>
+              <p class="mantraStatus" id="mantraStatus"></p>
+              <p class="mantraHeard hidden" id="mantraHeard"></p>
+            </div>
           </div>
         </div>
       </div>
