@@ -48,15 +48,19 @@ the Devtron secret (`k8s/secret.example.yaml`).
   create/verify, Anam session create. No business logic beyond request
   validation and the payment-proof token (see below).
 - [src/config.js](src/config.js) — the pooja catalogue (name, description,
-  price, ritual context for the AI prompt). Single source of truth for both
-  client cards and server-side pricing/prompting.
+  price, mantras) plus `ANAM_SYSTEM_PROMPT_HEADER`, the shared Hindi persona/
+  pronunciation/behaviour instructions used for every call. Single source of
+  truth for both client cards and server-side pricing/prompting.
 - [src/services/razorpay.js](src/services/razorpay.js) — all Razorpay HTTP
   calls and signature verification. Swap keys or provider here only.
 - [src/services/anam.js](src/services/anam.js) — the Anam.ai session-token
-  call (stateful, via `ANAM_PERSONA_ID`) and the per-call context string
-  (pooja + devotee details) the client feeds in via `addContext()` once
-  connected. The persona's voice/avatar/base prompt live in Anam Lab, not
-  here. Swap the persona id or provider here only.
+  call (stateful, via `ANAM_PERSONA_ID`) and the full per-call system prompt
+  (shared header + this devotee's name/dob/place/issue/pooja mantras) the
+  client feeds in via `addContext()` once connected, followed by a
+  `sendUserMessage()` nudge so the persona begins without waiting on the
+  devotee. The LLM generates the ritual speech itself from this prompt —
+  always in Hindi, per the header's instructions — rather than reciting a
+  fixed script. The persona's voice/avatar live in Anam Lab, not here.
 - [public/](public/) — the client: `index.html` (markup for every screen),
   `styles.css` (AstroLokal brand palette/fonts, mobile-first), `app.js`
   (screen state machine, fetch calls, Razorpay Checkout.js + Anam JS SDK

@@ -235,7 +235,7 @@
   function startCall(data) {
     setCallStatus('Connecting you to your purohit…');
     if (data.mock) return mockCall();
-    realCall(data.sessionToken, data.context, data.script);
+    realCall(data.sessionToken, data.systemPrompt);
   }
 
   // Simulated call screen used while ANAM_API_KEY is not yet configured.
@@ -244,23 +244,24 @@
     setTimeout(function () { setCallStatus(''); }, 1200);
   }
 
-  function realCall(sessionToken, context, script) {
+  function realCall(sessionToken, systemPrompt) {
     import('https://esm.sh/@anam-ai/js-sdk@latest')
       .then(function (mod) {
         var client = mod.createClient(sessionToken);
         session.anamClient = client;
         client.addListener(mod.AnamEvent.CONNECTION_ESTABLISHED, function () {
           setCallStatus('');
-          // Background only, never spoken — DOB/place/issue for the LLM in
-          // case the devotee interjects mid-ritual.
-          if (context && typeof client.addContext === 'function') {
-            client.addContext(context);
+          // Full persona/pronunciation instructions + this devotee's name,
+          // dob, place, issue and pooja mantras, fed in as context so the
+          // LLM generates the whole ritual itself (always in Hindi, per the
+          // prompt) rather than speaking a fixed script.
+          if (systemPrompt && typeof client.addContext === 'function') {
+            client.addContext(systemPrompt);
           }
-          // The actual ritual wording, spoken verbatim — bypasses the LLM
-          // entirely, so this is exactly what config.js's script says, not a
-          // paraphrase of it.
-          if (script && typeof client.talk === 'function') {
-            client.talk(script);
+          // Nudge the persona to begin without waiting on the devotee —
+          // the prompt itself instructs it to start with the introduction.
+          if (typeof client.sendUserMessage === 'function') {
+            client.sendUserMessage('पूजा आरंभ कीजिए।');
           }
         });
         client.addListener(mod.AnamEvent.CONNECTION_CLOSED, function () {

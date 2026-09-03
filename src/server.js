@@ -105,7 +105,7 @@ app.post('/api/anam/session', async (req, res) => {
     const session = await createSession({
       poojaName: pooja.name,
       ritualContext: pooja.ritualContext,
-      scriptTemplate: pooja.script,
+      mantras: pooja.mantras,
       name: name.trim(),
       dob: dob.trim(),
       place: place.trim(),
