@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Pooja | AstroLokal</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="nav">
+    <button class="back" id="backBtn" aria-label="Back">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="#35200F" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="brand">
+      <span class="brandRow">
+        <span class="markBox"><img src="logo.png" alt=""></span><span class="word">AstroLokal</span>
+      </span>
+      <span class="sub" id="navSub">AI Pooja</span>
+    </div>
+    <span></span>
+  </div>
+
+  <main id="main">
+
+    <!-- ---- 1. landing: pooja selection ------------------------------------ -->
+    <section id="screen-landing" class="screen">
+      <div class="intro">
+        <h1>Book a live AI Pooja</h1>
+        <p>Choose a pooja, pay securely, and get live-connected to an AI astro-purohit who performs it with you, by name.</p>
+      </div>
+      <div class="poojaList" id="poojaList">
+        <div class="poojaCard skel" aria-hidden="true"></div>
+        <div class="poojaCard skel" aria-hidden="true"></div>
+        <div class="poojaCard skel" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <!-- ---- 2. payment ------------------------------------------------------ -->
+    <section id="screen-payment" class="screen hidden">
+      <div class="panel">
+        <h2 class="serif">Confirm &amp; pay</h2>
+        <div class="orderRow" id="orderRow"></div>
+        <p class="fine" id="mockNotice"></p>
+        <button class="cta" id="payBtn">Pay now</button>
+        <button class="ghostBtn hidden" id="retryPayBtn">Try payment again</button>
+        <p class="errText hidden" id="payError"></p>
+      </div>
+    </section>
+
+    <!-- ---- 3. devotee details form ------------------------------------------ -->
+    <section id="screen-form" class="screen hidden">
+      <div class="panel">
+        <h2 class="serif">A few details for the purohit</h2>
+        <p class="fine">Used only to personalise your live pooja. Not stored after your call.</p>
+        <form id="detailsForm" novalidate>
+          <label class="field">
+            <span>Full name</span>
+            <input type="text" name="name" required maxlength="80" autocomplete="name">
+          </label>
+          <label class="field">
+            <span>Date of birth</span>
+            <input type="date" name="dob" required>
+          </label>
+          <label class="field">
+            <span>Place of birth</span>
+            <input type="text" name="place" required maxlength="80" placeholder="e.g. Jaipur, Rajasthan">
+          </label>
+          <label class="field">
+            <span>What's troubling you?</span>
+            <textarea name="issue" required maxlength="300" rows="4" placeholder="Tell the purohit what you'd like this pooja to help with"></textarea>
+            <span class="count" id="issueCount">0 / 300</span>
+          </label>
+          <button class="cta" type="submit" id="startCallBtn">Begin live pooja</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ---- 4. live avatar call ----------------------------------------------- -->
+    <section id="screen-call" class="screen hidden fullbleed">
+      <div class="callPanel">
+        <div class="callVideoWrap">
+          <video id="personaVideo" playsinline autoplay></video>
+          <div class="mockAvatar hidden" id="mockAvatar">
+            <div class="mockAvatarRing"></div>
+          </div>
+          <div class="callOverlay" id="callOverlay">
+            <div class="spinner"></div>
+            <p id="callStatus">Connecting you to your purohit…</p>
+          </div>
+        </div>
+        <button class="endCallBtn" id="endCallBtn">End pooja</button>
+      </div>
+    </section>
+
+    <!-- ---- 5. completion ------------------------------------------------------ -->
+    <section id="screen-complete" class="screen hidden">
+      <div class="panel completePanel">
+        <div class="doneMark">
+          <svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="24" fill="#F45722"/><path d="M14 24.5l7 7 13-14" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <h2 class="serif">Aapki pooja poori hui</h2>
+        <p>May this bring you peace and clarity. Your purohit's blessings stay with you.</p>
+        <button class="cta" id="homeBtn">Return home</button>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

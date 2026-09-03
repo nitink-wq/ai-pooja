@@ -1,0 +1,22 @@
+# Local dev stack — no DB, single stateless service.
+# Open http://localhost:3000/ after `docker compose up`.
+services:
+  app:
+    build: .
+    environment:
+      PORT: 3000
+      # Unset RAZORPAY_*/ANAM_* -> both payment and the avatar call run in
+      # mock mode. Set them (or use a mounted .env) to test the real thing:
+      # RAZORPAY_KEY_ID: rzp_test_xxxxxxxxxxxx
+      # RAZORPAY_KEY_SECRET: replace-me
+      # ANAM_API_KEY: replace-me
+      # ANAM_AVATAR_ID: replace-me
+      # ANAM_VOICE_ID: replace-me
+      # ANAM_LLM_ID: replace-me
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5

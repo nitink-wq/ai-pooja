@@ -1,0 +1,17 @@
+{
+  "name": "ai-pooja",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AstroLokal 'AI Pooja' — self-serve Razorpay-paid, Anam.ai live-avatar-guided pooja flow",
+  "type": "module",
+  "engines": {
+    "node": ">=20.12"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "dev": "node --watch --env-file-if-exists=.env src/server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}

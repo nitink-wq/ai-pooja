@@ -1,0 +1,60 @@
+# Stateless web tier — no DB, so safe at any replica count / rolling update.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-pooja
+  labels:
+    app: ai-pooja
+    role: web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ai-pooja
+      role: web
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: ai-pooja
+        role: web
+    spec:
+      containers:
+        - name: web
+          image: your-registry/ai-pooja:latest # set by CI
+          ports:
+            - containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"
+          envFrom:
+            - secretRef:
+                name: ai-pooja-secrets
+          readinessProbe:
+            httpGet: { path: /readyz, port: 3000 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /healthz, port: 3000 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-pooja
+  labels:
+    app: ai-pooja
+spec:
+  selector:
+    app: ai-pooja
+    role: web
+  ports:
+    - port: 80
+      targetPort: 3000
