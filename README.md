@@ -48,23 +48,39 @@ the Devtron secret (`k8s/secret.example.yaml`).
   create/verify, Anam session create. No business logic beyond request
   validation and the payment-proof token (see below).
 - [src/config.js](src/config.js) — the pooja catalogue (name, description,
-  price, mantras) plus `ANAM_SYSTEM_PROMPT_HEADER`, the shared Hindi persona/
-  pronunciation/behaviour instructions used for every call. Single source of
-  truth for both client cards and server-side pricing/prompting.
+  price, jaap/havan mantras) plus `buildFlow()`, which assembles the whole
+  ritual as an ordered list of `speech` / `mantra` / `action` segments for a
+  given devotee (name, dob, place, issue substituted in). Single source of
+  truth for both client cards and the live-call script.
 - [src/services/razorpay.js](src/services/razorpay.js) — all Razorpay HTTP
   calls and signature verification. Swap keys or provider here only.
 - [src/services/anam.js](src/services/anam.js) — the Anam.ai session-token
-  call (stateful, via `ANAM_PERSONA_ID`) and the full per-call system prompt
-  (shared header + this devotee's name/dob/place/issue/pooja mantras) the
-  client feeds in via `addContext()` once connected, followed by a
-  `sendUserMessage()` nudge so the persona begins without waiting on the
-  devotee. The LLM generates the ritual speech itself from this prompt —
-  always in Hindi, per the header's instructions — rather than reciting a
-  fixed script. The persona's voice/avatar live in Anam Lab, not here.
+  call (stateful, via `ANAM_PERSONA_ID`) and `buildFlow()`'s per-devotee
+  segment list, both returned to the client. The client plays the flow by
+  calling `talk()` with each segment's exact text (no LLM improvisation) and
+  waits for the persona to finish speaking before auto-advancing (`speech`
+  segments) or showing the mantra-jaap / action-confirm button (`mantra` /
+  `action` segments) — see "Interactive protocol" below. The persona's
+  voice/avatar live in Anam Lab, not here.
 - [public/](public/) — the client: `index.html` (markup for every screen),
   `styles.css` (AstroLokal brand palette/fonts, mobile-first), `app.js`
   (screen state machine, fetch calls, Razorpay Checkout.js + Anam JS SDK
   wiring).
+
+### Interactive protocol
+
+Early on this used an LLM-narrated system prompt that was instructed to pause
+and say a fixed cue sentence at each mantra/action point — unreliable, since
+an LLM paraphrases instructions instead of reciting them, so the cues rarely
+fired. It's now fully deterministic: `buildFlow()` returns a fixed ordered
+list of segments, each spoken via `talk()` (exact TTS text, no LLM in the
+loop). The client tracks which segment is playing and, once Anam's
+`MESSAGE_HISTORY_UPDATED` event confirms the persona finished speaking it,
+either auto-advances (`speech`) or shows the mantra mic button / "I've done
+this" button and waits for the devotee (`mantra` / `action`) before playing
+the next segment. Mantra chants are checked with the browser's own speech
+recognition against the segment text (word-overlap, ≥50% accepted) — the
+call has `disableInputAudio: true` so Anam's own mic pipeline is never used.
 
 ### Payment → call handoff without a database
 

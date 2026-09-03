@@ -16,6 +16,10 @@
     payToken: null,
     anamClient: null,
     processedMsgCount: 0,
+    ritualFlow: [],
+    ritualIdx: -1,
+    currentSegment: null,
+    awaitingSegmentSpeech: false,
     currentMantraTarget: '',
     endScheduled: false,
   };
@@ -243,47 +247,52 @@
 
   function startCall(data) {
     setCallStatus('Connecting you to your purohit…');
-    if (data.mock) return mockCall();
-    realCall(data.sessionToken, data.systemPrompt);
+    if (data.mock) return mockCall(data.flow);
+    realCall(data.sessionToken, data.flow);
   }
 
   // Simulated call screen used while ANAM_API_KEY is not yet configured.
-  function mockCall() {
+  function mockCall(ritualFlow) {
     el('mockAvatar').classList.remove('hidden');
-    setTimeout(function () { setCallStatus(''); }, 1200);
+    setTimeout(function () {
+      setCallStatus('');
+      // Drive the same segment player against a stub client so the mantra/
+      // action cards can still be clicked through without a real Anam call.
+      var stubClient = {
+        talk: function (text) {
+          setTimeout(function () { onSegmentSpoken(); }, Math.min(2500, 600 + text.length * 18));
+        },
+        stopStreaming: function () {},
+      };
+      session.anamClient = stubClient;
+      playFlow(ritualFlow);
+    }, 1200);
   }
 
-  function realCall(sessionToken, systemPrompt) {
+  function realCall(sessionToken, ritualFlow) {
     import('https://esm.sh/@anam-ai/js-sdk@latest')
       .then(function (mod) {
         // disableInputAudio: the devotee never speaks to the persona over
-        // their mic — all input comes from our own buttons (mantra-jaap
-        // check, action confirm), sent via sendUserMessage below.
+        // their mic — all input (mantra-jaap check, action confirm) comes
+        // from our own buttons instead.
         var client = mod.createClient(sessionToken, { disableInputAudio: true });
         session.anamClient = client;
         client.addListener(mod.AnamEvent.CONNECTION_ESTABLISHED, function () {
           setCallStatus('');
-          // Full persona/pronunciation instructions + this devotee's name,
-          // dob, place, issue and pooja mantras, fed in as context so the
-          // LLM generates the whole ritual itself (always in Hindi, per the
-          // prompt) rather than speaking a fixed script.
-          if (systemPrompt && typeof client.addContext === 'function') {
-            client.addContext(systemPrompt);
-          }
-          // Nudge the persona to begin without waiting on the devotee —
-          // the prompt itself instructs it to start with the introduction.
-          if (typeof client.sendUserMessage === 'function') {
-            client.sendUserMessage('पूजा आरंभ कीजिए।');
-          }
+          playFlow(ritualFlow);
         });
         client.addListener(mod.AnamEvent.CONNECTION_CLOSED, function () {
           endCall();
         });
-        // Fires once the persona finishes speaking each turn, with the full
-        // transcript so far — used to detect the mantra/action/end cues.
+        // Fires once the persona finishes speaking each utterance — the
+        // signal the segment player waits on before advancing/showing a
+        // button, since talk() speaks exact text with no LLM in the loop.
         if (mod.AnamEvent.MESSAGE_HISTORY_UPDATED) {
           client.addListener(mod.AnamEvent.MESSAGE_HISTORY_UPDATED, function (messages) {
-            handleTranscript(messages || []);
+            if ((messages || []).length > session.processedMsgCount) {
+              session.processedMsgCount = messages.length;
+              onSegmentSpoken();
+            }
           });
         }
         return client.streamToVideoElement('personaVideo');
@@ -294,53 +303,50 @@
       });
   }
 
-  // ---- interactive protocol: mantra jaap + action confirm + auto end-call ----
-  // The persona is an LLM — it restates the cue instructions from
-  // src/config.js in its own words rather than reciting them verbatim, so
-  // detection here is keyword-based (does this sentence mention a button,
-  // and is it about a mantra vs. a physical action vs. ending the pooja)
-  // rather than an exact string match.
-  function splitSentences(content) {
-    return String(content || '').split(/[।.!?]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+  // ---- ritual flow player: fixed segments, deterministic pacing ----------
+  // The whole pooja (mantras, action prompts, sankalp wording) is prebuilt
+  // server-side (src/config.js buildFlow) and spoken verbatim via talk() —
+  // no LLM improvisation — so the app always knows exactly which segment is
+  // playing and pauses for a mantra/action button at exactly the right spot.
+  function playFlow(ritualFlow) {
+    session.ritualFlow = ritualFlow || [];
+    session.ritualIdx = -1;
+    advanceFlow();
   }
 
-  // Drops the trailing "press the button" instruction sentence(s) so what's
-  // left is just the mantra/action content the persona actually described.
-  function stripButtonSentence(content) {
-    var sentences = splitSentences(content);
-    while (sentences.length > 1 && /बटन/.test(sentences[sentences.length - 1])) {
-      sentences.pop();
-    }
-    return sentences.join('। ').trim();
-  }
-
-  function detectCue(content) {
-    var hasButtonMention = /बटन/.test(content) && /(दबा|दबाए|press)/i.test(content);
-    var mentionsEnd = /(समाप्त|संकल्प पूर्ण|पूजा .*(पूर्ण|संपन्न))/.test(content) && /शांति/.test(content);
-    if (mentionsEnd) return 'end';
-    if (!hasButtonMention) return null;
-    if (/(मंत्र|जाप|जपें|जपिए)/.test(content)) return 'mantra';
-    return 'action';
-  }
-
-  function handleTranscript(messages) {
-    var fresh = messages.slice(session.processedMsgCount);
-    session.processedMsgCount = messages.length;
-    fresh.forEach(function (m) {
-      if (!m || m.role !== 'persona' || !m.content) return;
-      var cue = detectCue(m.content);
-      if (cue === 'end') {
-        hideActionBar();
-        if (!session.endScheduled) {
-          session.endScheduled = true;
-          setTimeout(endCall, 1500);
-        }
-      } else if (cue === 'action') {
-        showActionCard(stripButtonSentence(m.content));
-      } else if (cue === 'mantra') {
-        showMantraCard(stripButtonSentence(m.content));
+  function advanceFlow() {
+    session.ritualIdx += 1;
+    var seg = session.ritualFlow[session.ritualIdx];
+    if (!seg) {
+      hideActionBar();
+      if (!session.endScheduled) {
+        session.endScheduled = true;
+        setTimeout(endCall, 1200);
       }
-    });
+      return;
+    }
+    session.currentSegment = seg;
+    session.awaitingSegmentSpeech = true;
+    if (session.anamClient && typeof session.anamClient.talk === 'function') {
+      session.anamClient.talk(seg.text);
+    } else {
+      onSegmentSpoken();
+    }
+  }
+
+  // Called once the persona finishes speaking the current segment.
+  function onSegmentSpoken() {
+    if (!session.awaitingSegmentSpeech) return;
+    session.awaitingSegmentSpeech = false;
+    var seg = session.currentSegment;
+    if (!seg) return;
+    if (seg.type === 'speech') {
+      advanceFlow();
+    } else if (seg.type === 'mantra') {
+      showMantraCard(seg.text);
+    } else if (seg.type === 'action') {
+      showActionCard(seg.text);
+    }
   }
 
   function hideActionBar() {
@@ -372,16 +378,12 @@
 
   function confirmActionDone() {
     hideActionBar();
-    if (session.anamClient && typeof session.anamClient.sendUserMessage === 'function') {
-      session.anamClient.sendUserMessage('यजमान ने बताई गई क्रिया पूर्ण कर ली है। कृपया आगे बढ़ें।');
-    }
+    advanceFlow();
   }
 
   function confirmMantraDone() {
     hideActionBar();
-    if (session.anamClient && typeof session.anamClient.sendUserMessage === 'function') {
-      session.anamClient.sendUserMessage('यजमान ने मंत्र जाप पूर्ण किया। कृपया आगे बढ़ें।');
-    }
+    advanceFlow();
   }
 
   // Word-overlap (Sørensen–Dice) similarity, good enough for short mantras.
@@ -457,6 +459,10 @@
     session.orderId = null;
     session.payToken = null;
     session.processedMsgCount = 0;
+    session.ritualFlow = [];
+    session.ritualIdx = -1;
+    session.currentSegment = null;
+    session.awaitingSegmentSpeech = false;
     session.currentMantraTarget = '';
     session.endScheduled = false;
     // Reset the stack rather than pushing: the call can't be resumed, so

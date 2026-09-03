@@ -1,68 +1,77 @@
-// Pooja catalogue: the single source of truth for what's offered and its
-// price. Both the client (cards) and the server (order amount, Anam system
-// prompt) read from here, so a price or copy change never has to touch
-// logic.
+// Pooja catalogue: the single source of truth for what's offered, its price,
+// and the ritual content. Both the client (cards) and the server (order
+// amount, Anam call flow) read from here.
 //
-// `mantras` is the pooja-specific ritual content (chant/havan mantras) that
-// gets appended to ANAM_SYSTEM_PROMPT_HEADER below to build the full
-// per-call system prompt in services/anam.js. Each block below is marked
-// "EXAMPLE ONLY" — standard/traditional mantras used to unblock testing,
-// not yet vetted for this specific ritual sequence. Swap in the final
-// reviewed mantras before this goes live.
+// The pooja itself is driven as a fixed sequence of "segments" (see
+// buildFlow below), each spoken via Anam's talk() — exact text, no LLM
+// improvisation — so the app controls pacing directly instead of hoping an
+// LLM pauses in the right place. A segment is one of:
+//   'speech' — narration/mantra the persona just says, then auto-advances
+//   'mantra' — a mantra the DEVOTEE chants; after the persona says it once,
+//              the app shows a mic button and waits for a spoken match
+//   'action' — a physical action (light a diya, apply tilak); after the
+//              persona describes it, the app shows an "I've done this"
+//              button and waits for a tap
+//
+// jaapMantras[0] is always the shared Ganesh mantra (used right after the
+// sankalp); the rest are this pooja's own mantras. Every mantra/havan line
+// below is marked "EXAMPLE ONLY" — standard/traditional mantras used to
+// unblock testing, not yet vetted for this specific ritual sequence. Swap
+// in the final reviewed mantras before this goes live.
 export const POOJAS = [
   {
     id: 'navgraha-shanti',
     name: 'Navgraha Shanti Pooja',
     description: 'Pacify the nine planetary forces and clear the obstacles they are casting on your life.',
     priceInr: 299,
+    poojaLabel: 'नवग्रह शांति पूजा',
     ritualContext: 'नवग्रह शांति पूजा — नौ ग्रहों को शांत करने और उनके अशुभ प्रभाव से उत्पन्न बाधाओं को दूर करने हेतु',
-    // EXAMPLE ONLY — placeholder mantras to unblock testing; refine/replace
-    // with the final vetted Navgraha Shanti jaap/havan mantras before launch.
-    mantras:
-      'जाप मंत्र (प्रत्येक तीन बार):\n' +
-      '- ओम् गं गणपतये नमः\n' +
-      '- ओम् ऐं ह्रीं क्लीं नवग्रह देवताभ्यो नमः\n' +
-      '- ओम् सूर्याय च चंद्राय च मंगलाय बुधाय च । गुरु शुक्र शनिभ्यश्च राहवे केतवे नमः ॥\n\n' +
-      'हवन आहुति मंत्र (प्रत्येक की पाँच आहुति, हर बार "स्वाहा" के साथ):\n' +
-      '- ओम् नवग्रह देवताभ्यो नमः स्वाहा\n' +
-      '- ओम् ह्रां ह्रीं ह्रौं सः सूर्याय नमः स्वाहा\n' +
-      '- ओम् सर्व ग्रह पीड़ा निवारणाय नमः स्वाहा',
+    jaapMantras: [
+      'ओम् गं गणपतये नमः',
+      'ओम् ऐं ह्रीं क्लीं नवग्रह देवताभ्यो नमः',
+      'ओम् सूर्याय च चंद्राय च मंगलाय बुधाय च। गुरु शुक्र शनिभ्यश्च राहवे केतवे नमः।',
+    ],
+    havanMantras: [
+      'ओम् नवग्रह देवताभ्यो नमः स्वाहा',
+      'ओम् ह्रां ह्रीं ह्रौं सः सूर्याय नमः स्वाहा',
+      'ओम् सर्व ग्रह पीड़ा निवारणाय नमः स्वाहा',
+    ],
   },
   {
     id: 'buri-nazar-nivarn',
     name: 'Buri Nazar Nivaran Pooja',
     description: 'Remove the evil eye and negative energy that is blocking your peace, health or progress.',
     priceInr: 399,
+    poojaLabel: 'बुरी नज़र निवारण पूजा',
     ritualContext: 'बुरी नज़र निवारण पूजा — बुरी नज़र और नकारात्मक ऊर्जा को दूर करने हेतु',
-    // EXAMPLE ONLY — placeholder mantras to unblock testing; refine/replace
-    // with the final vetted Buri Nazar Nivaran jaap/havan mantras before launch.
-    mantras:
-      'जाप मंत्र (प्रत्येक तीन बार):\n' +
-      '- ओम् गं गणपतये नमः\n' +
-      '- ओम् नमो भगवते रुद्राय नमः\n' +
-      '- ओम् दृष्टि दोष निवारणाय नमः शिवाय नमः\n\n' +
-      'हवन आहुति मंत्र (प्रत्येक की पाँच आहुति, हर बार "स्वाहा" के साथ):\n' +
-      '- ओम् नमो भगवते रुद्राय स्वाहा\n' +
-      '- ओम् सर्व नज़र दोष निवारणाय नमः स्वाहा\n' +
-      '- ओम् रक्षा कवचाय नमः स्वाहा',
+    jaapMantras: [
+      'ओम् गं गणपतये नमः',
+      'ओम् नमो भगवते रुद्राय नमः',
+      'ओम् दृष्टि दोष निवारणाय नमः शिवाय नमः',
+    ],
+    havanMantras: [
+      'ओम् नमो भगवते रुद्राय स्वाहा',
+      'ओम् सर्व नज़र दोष निवारणाय नमः स्वाहा',
+      'ओम् रक्षा कवचाय नमः स्वाहा',
+    ],
   },
   {
     id: 'prem-milan',
     name: 'Prem Milan Pooja',
     description: 'Invoke divine blessings to resolve conflicts and bring harmony into your relationship.',
     priceInr: 249,
+    poojaLabel: 'प्रेम मिलन पूजा',
     ritualContext: 'प्रेम मिलन पूजा — रिश्ते में सामंजस्य, समझ और मिलन हेतु दिव्य आशीर्वाद के आह्वान के लिए',
-    // EXAMPLE ONLY — placeholder mantras to unblock testing; refine/replace
-    // with the final vetted Prem Milan jaap/havan mantras before launch.
-    mantras:
-      'जाप मंत्र (प्रत्येक तीन बार):\n' +
-      '- ओम् गं गणपतये नमः\n' +
-      '- ओम् कामदेवाय विद्महे पुष्पबाणाय धीमहि । तन्नो अनंगः प्रचोदयात् ॥\n' +
-      '- ओम् पार्वती पतये नमः\n\n' +
-      'हवन आहुति मंत्र (प्रत्येक की पाँच आहुति, हर बार "स्वाहा" के साथ):\n' +
-      '- ओम् कामदेवाय नमः स्वाहा\n' +
-      '- ओम् प्रेम मिलन सिद्धये नमः स्वाहा\n' +
-      '- ओम् उमा महेश्वराभ्यां नमः स्वाहा',
+    jaapMantras: [
+      'ओम् गं गणपतये नमः',
+      'ओम् कामदेवाय विद्महे पुष्पबाणाय धीमहि। तन्नो अनंगः प्रचोदयात्।',
+      'ओम् पार्वती पतये नमः',
+    ],
+    havanMantras: [
+      'ओम् कामदेवाय नमः स्वाहा',
+      'ओम् प्रेम मिलन सिद्धये नमः स्वाहा',
+      'ओम् उमा महेश्वराभ्यां नमः स्वाहा',
+    ],
   },
 ];
 
@@ -70,113 +79,56 @@ export function findPooja(id) {
   return POOJAS.find((p) => p.id === id) || null;
 }
 
-// Exact sentinel phrases the persona is instructed to speak, verbatim, at
-// interaction points. The client (public/app.js) watches the live transcript
-// (Anam's MESSAGE_HISTORY_UPDATED event) for these same literal strings to
-// drive the UI — showing the mantra-jaap mic button, the "action done"
-// button, or ending the call. If these change here, they must change in
-// app.js too (duplicated there since the client has no build step / can't
-// import server-side modules).
-export const MANTRA_CUE = 'अब आप यह मंत्र जाप करने के लिए बटन दबाएँ।';
-export const ACTION_CUE = 'जब आपका यह कार्य पूर्ण हो जाए, तो जारी रखें बटन दबाएँ।';
-export const END_CUE = 'पूजा समाप्त होती है। ॐ शांति शांति शांति।';
+function speech(text) { return { type: 'speech', text }; }
+function mantra(text) { return { type: 'mantra', text }; }
+function action(text) { return { type: 'action', text }; }
 
-// Shared persona/pronunciation/behaviour instructions for every pooja call.
-// Pooja-specific details (devotee name, dob, place, issue, and the mantras
-// above) are appended per-call in services/anam.js — this header never
-// changes per devotee. Kept verbatim as authored, with an added interactive
-// protocol section so the ritual pauses for the devotee's own button-driven
-// actions instead of running start-to-finish unattended.
-export const ANAM_SYSTEM_PROMPT_HEADER = `आप पंडित Nitin हैं — आस्ट्रोलोकल पर एक डिजिटल पंडित, जो
-ज्योतिषी Nitin के मार्गदर्शन में बनाए गए हैं और यजमान के
-लिए पूजा संपन्न कराते हैं। आप पूरी पूजा एक अनुभवी, वास्तविक पुरोहित
-की तरह ही बोलकर कराएँगे, किंतु आरंभ में ही स्पष्ट बताएँगे कि आप
-वास्तविक पंडित नहीं हैं।
+// Builds the ordered, per-devotee segment list for a live call. Every
+// segment's text is spoken via talk() — deterministic, not LLM-generated —
+// so the app always knows exactly when to pause for a mantra/action and
+// when to auto-advance. gotra defaults to "कश्यप गोत्र" per tradition when
+// unknown, matching temple convention for devotees who don't know theirs.
+export function buildFlow(pooja, devotee) {
+  var name = devotee.name;
+  var flow = [];
 
-परिचय (पूजा आरंभ करने से पहले, संक्षेप में):
-- नमस्कार करें और अपना नाम बताएँ।
-- विनम्रता से बताएँ कि आप एक डिजिटल पंडित हैं — वास्तविक व्यक्ति
-  नहीं — जो Nitin जी की विधि और मार्गदर्शन के अनुसार यह
-  पूजा करा रहे हैं।
-- यजमान को आश्वस्त करें कि पूजा शास्त्र-सम्मत विधि से, पूर्ण श्रद्धा
-  के साथ की जाएगी, और वे मन से जुड़कर पूरा फल प्राप्त कर सकते हैं।
-- यह परिचय तीन-चार वाक्यों से अधिक न हो; इसके बाद सीधे पूजा आरंभ करें।
+  flow.push(speech(
+    'नमस्कार ' + name + ' जी। मैं पंडित Nitin हूँ — आस्ट्रोलोकल पर एक डिजिटल पंडित, ' +
+    'ज्योतिषी Nitin के मार्गदर्शन में बनाया गया हूँ। मैं एक वास्तविक पंडित नहीं हूँ, ' +
+    'किंतु आपकी यह ' + pooja.poojaLabel + ' शास्त्र-सम्मत विधि से, पूर्ण श्रद्धा के साथ ' +
+    'संपन्न कराऊँगा। कृपया हाथ जोड़कर, नेत्र बंद कर श्रद्धा से जुड़ें।'
+  ));
 
-भाषा और उच्चारण:
-- केवल शुद्ध हिंदी में, देवनागरी में बोलें। अंग्रेज़ी शब्दों से बचें।
-  किसी भी परिस्थिति में हिंदी के अतिरिक्त किसी और भाषा में उत्तर न दें।
-- प्रत्येक शब्द का उच्चारण स्पष्ट और शुद्ध हो — अंग्रेज़ी लहजे में
-  हिंदी न बोलें।
-- दीर्घ स्वर (आ, ई, ऊ) पूरे खींचें; ह्रस्व स्वर छोटे रखें।
-  "नाम" = नाम, "नम" नहीं।
-- हिंदी शब्दों के अंत का 'अ' मौन रहता है (राम = राम्), किंतु संस्कृत
-  मंत्रों में हलंत (त्, म्) पर स्पष्ट रुकें — अतिरिक्त 'अ' न जोड़ें।
-- ॐ का उच्चारण सदैव एक ही स्वर में 'ओम्' करें — इसे 'अ-उ-म' तीन
-  खंडों में कभी न तोड़ें। 'ओ' दीर्घ हो, 'म्' पर अनुनासिक ध्वनि के
-  साथ रुकें। लिखते समय भी 'ओम्' ही लिखें, ॐ चिह्न नहीं।
-- "स्वाहा" = स्वा-हा, दोनों 'आ' दीर्घ, 'ह' स्पष्ट श्वास के साथ — कभी
-  'स्वहा' या अंग्रेज़ी 'h' न बोलें।
-- अनुस्वार (ं), विसर्ग (ः) और संयुक्ताक्षर (क्ष, त्र, ज्ञ, ण्य) का
-  सही उच्चारण करें। विसर्ग को न छोड़ें, न 'ह' बना दें।
-- महाप्राण व्यंजन (ध, भ, ख, थ) में स्पष्ट श्वास हो — "सिद्धार्थ" में
-  'द्ध' और 'र्थ' दोनों स्पष्ट सुनाई दें।
-- मंत्र धीमी गति से, लयबद्ध, प्रत्येक पद पर विराम लेते हुए पढ़ें —
-  गद्य की तरह नहीं।
-- यजमान का नाम हर बार आदर और सही उच्चारण के साथ लें।
+  flow.push(action(
+    'अब मैं दीप प्रज्वलित कर रहा हूँ। कृपया अपना दीया जलाएँ।'
+  ));
 
-स्वर और व्यवहार:
-- वाणी गंभीर, स्नेहमय और आश्वस्त हो — जैसे एक बुज़ुर्ग पुरोहित यजमान
-  के सामने बैठे हों।
-- पूजा इस क्रम से कराएँ: परिचय → दीप प्रज्वलन → गणेश वंदना → संकल्प →
-  आवाहन → मुख्य मंत्र जाप → हवन (आहुति) → क्षमा प्रार्थना →
-  शांति पाठ → समापन।
-- यह पूजा आप यजमान की ओर से कराएँ, किंतु यह अब एक इंटरैक्टिव पूजा है
-  — नीचे "इंटरैक्टिव प्रोटोकॉल" में बताए अनुसार, कुछ बिंदुओं पर
-  यजमान के अपने ऐप के माध्यम से संकेत मिलने तक रुकें।
-- मंत्रों और चरणों के बीच स्वाभाविक, छोटे विराम लें — परंतु प्रोटोकॉल
-  के निर्धारित बिंदुओं के अतिरिक्त कोई प्रश्न न पूछें और कोई उत्तर
-  न माँगें।
-- कोई भविष्यवाणी न करें, किसी फल का आश्वासन न दें। केवल "ईश्वर की
-  कृपा बनी रहे" जैसी शुभकामना दें।
-- संकल्प में यजमान का नाम, जन्म-तिथि और उद्देश्य स्वाभाविक रूप
-  से बोलें। गोत्र ज्ञात न होने पर परंपरा के अनुसार "कश्यप गोत्र" कहें।
-- तिथि, पक्ष या मास का उल्लेख केवल तभी करें जब वह आपको दिया गया हो।
-- पूरी पूजा लगभग 10-12 मिनट में बिना रुके पूर्ण हो।
+  flow.push(mantra(pooja.jaapMantras[0]));
 
-क्रियाएँ (हाथ से किए जाने वाले कर्म):
-- हर शारीरिक क्रिया को बोलकर बताएँ, वर्तमान काल में, प्रथम पुरुष में —
-  जैसे "अब मैं दीप प्रज्वलित कर रहा हूँ", "अब मैं कुश और काले तिल के
-  साथ जल अर्पित कर रहा हूँ", "अब मैं अग्नि में घी की आहुति दे रहा हूँ"।
-- क्रिया बताने के बाद ही उसका मंत्र बोलें, ताकि सुनने वाला पूरा दृश्य
-  मन में देख सके।
-- हवन में प्रत्येक आहुति इस रूप में हो:
-  मंत्र → "स्वाहा" → छोटा विराम → अगली आहुति।
-  "स्वाहा" स्पष्ट, दृढ़ और थोड़ा ऊँचे स्वर में कहें — यह वह क्षण है
-  जब आहुति अग्नि में गिरती है।
-- आहुतियों के बीच अग्नि की ध्वनि के लिए एक-दो क्षण का विराम रखें।
-- समापन में भस्म (हवन की राख) से यजमान के मस्तक पर तिलक करने की
-  बात कहें — "यह ईश्वर का आशीर्वाद है"।
-- पूजा आरंभ होते ही, बिना यजमान की प्रतीक्षा किए, स्वयं परिचय से
-  शुरुआत करें।
+  flow.push(speech(
+    'ॐ, अद्य ' + name + ' गोत्रे, ' + (devotee.gotra || 'कश्यप गोत्र') + ', ' +
+    name + ' जी, जन्म-तिथि ' + devotee.dob + ', जन्म स्थान ' + devotee.place + ' — ' +
+    'यह संकल्प लेते हैं कि ' + devotee.issue + ' हेतु, ' + pooja.poojaLabel + ' का अनुष्ठान ' +
+    'श्रद्धा और विश्वास के साथ संपन्न किया जाए। ईश्वर की कृपा बनी रहे।'
+  ));
 
-इंटरैक्टिव प्रोटोकॉल (अनिवार्य — नीचे दिए वाक्यांश अक्षरशः बोलें):
-- यजमान अपनी आवाज़ से आपसे सीधे बात नहीं कर रहा — वह ऐप में दिए गए
-  बटन दबाकर अपनी क्रियाएँ पूर्ण होने की पुष्टि करता है। जब आपको ऐप की
-  ओर से कोई संदेश मिले (जैसे "यजमान ने मंत्र जाप पूर्ण किया" या
-  "यजमान ने क्रिया पूर्ण कर ली है"), तभी आगे बढ़ें — इससे पहले कभी न
-  बढ़ें, चाहे कितना भी समय बीत जाए।
-- मंत्र जाप बिंदु: जब यजमान को स्वयं कोई मंत्र जपना हो, तो पहले वह
-  मंत्र स्पष्ट रूप से एक बार बोलें, फिर ठीक यही वाक्य कहें और तुरंत
-  रुक जाएँ, आगे कुछ न बोलें: "अब आप यह मंत्र जाप करने के लिए बटन
-  दबाएँ।" — ऐप से पुष्टि मिलने के बाद ही अगले चरण पर बढ़ें।
-- क्रिया बिंदु: जब यजमान को कोई भौतिक कार्य करना हो (जैसे दीया
-  जलाना, जल अर्पित करना), तो पहले वह कार्य स्पष्ट शब्दों में समझाएँ,
-  फिर ठीक यही वाक्य कहें और तुरंत रुक जाएँ, आगे कुछ न बोलें: "जब
-  आपका यह कार्य पूर्ण हो जाए, तो जारी रखें बटन दबाएँ।" — ऐप से पुष्टि
-  मिलने के बाद ही अगले चरण पर बढ़ें।
-- हवन की पाँचों आहुतियाँ बिना रुके एक साथ कराई जा सकती हैं — हर
-  आहुति पर क्रिया बिंदु दोहराने की आवश्यकता नहीं, केवल हवन शुरू करने
-  से पहले एक बार क्रिया बिंदु का प्रयोग करें।
-- समापन: पूरी पूजा और संकल्प पूर्ण होने पर "संकल्प पूर्ण हुआ" कहें,
-  उसके ठीक बाद ठीक यही वाक्य बोलकर पूजा समाप्त करें, इसके बाद कुछ भी
-  न बोलें: "पूजा समाप्त होती है। ॐ शांति शांति शांति।"`;
+  for (var i = 1; i < pooja.jaapMantras.length; i++) {
+    flow.push(mantra(pooja.jaapMantras[i]));
+  }
+
+  flow.push(speech('अब मैं हवन कुंड में अग्नि प्रज्वलित कर, आहुति अर्पित करता हूँ।'));
+  pooja.havanMantras.forEach(function (m) {
+    flow.push(speech(m + '। इदं पितृभ्यः, न मम।'));
+  });
+
+  flow.push(speech('संकल्प पूर्ण हुआ। ईश्वर से प्रार्थना है कि वे आपकी हर त्रुटि क्षमा करें और शांति प्रदान करें।'));
+
+  flow.push(action(
+    'समापन में मैं भस्म से आपके मस्तक पर तिलक करने का भाव अर्पित करता हूँ — यह ईश्वर का ' +
+    'आशीर्वाद है। कृपया अपने माथे पर एक हल्का तिलक लगाएँ।'
+  ));
+
+  flow.push(speech('पूजा समाप्त होती है। ॐ शांति शांति शांति।'));
+
+  return flow;
+}
