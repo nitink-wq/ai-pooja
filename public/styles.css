@@ -51,17 +51,20 @@ button:active:not([disabled]), .poojaCard:active { transform: scale(.96); }
 /* screens crossfade+rise in on navigation instead of snapping, so moving
    between landing/payment/form/call/complete reads as one continuous app
    rather than separate static pages (see showScreen in app.js) */
-.screen.screenIn { animation: screenEnter .34s cubic-bezier(.22, 1, .36, 1) both; }
+/* The rise is applied to the screen's CHILDREN, never to the .screen itself:
+   these screens hold position:fixed elements (.payDock, .callPanel), and a
+   transform on an ancestor promotes it to their containing block, which
+   breaks fixed positioning. `animation-fill-mode: both` makes that permanent
+   — even `transform: none` in the final keyframe computes to an identity
+   matrix, which is still "a transform" as far as the containing-block rule
+   is concerned. Fading the screen and rising its children avoids it. */
+.screen.screenIn { animation: screenFade .28s ease both; }
+@keyframes screenFade { from { opacity: 0; } to { opacity: 1; } }
+.screen:not(.fullbleed).screenIn > * { animation: screenEnter .34s cubic-bezier(.22, 1, .36, 1) both; }
 @keyframes screenEnter {
   from { opacity: 0; transform: translateY(14px) scale(.985); }
   to { opacity: 1; transform: none; }
 }
-/* the call screen holds a position:fixed panel (.callPanel, pinned to the
-   viewport) — animating `transform` on an ancestor promotes it to a new
-   containing block for fixed descendants, which breaks that fixed layout.
-   Fade-only here avoids that entirely. */
-.screen.fullbleed.screenIn { animation: screenFade .28s ease both; }
-@keyframes screenFade { from { opacity: 0; } to { opacity: 1; } }
 
 /* ---- nav -------------------------------------------------------------- */
 .nav {
@@ -127,10 +130,62 @@ button:active:not([disabled]), .poojaCard:active { transform: scale(.96); }
 .orderRow {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 14px 16px; border-radius: 14px; background: var(--cream);
-  box-shadow: inset 0 0 0 1px var(--hair); margin: 12px 0 6px;
+  box-shadow: inset 0 0 0 1px var(--hair); margin: 12px 0 12px;
 }
+.orderRow .oMain { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .orderRow .oName { font-size: 15px; font-weight: 700; }
-.orderRow .oPrice { font-family: var(--serif); font-size: 18px; font-weight: 700; color: var(--gold-deep); }
+.orderRow .oMeta { font-size: 12.5px; color: var(--ink-soft); }
+.orderRow .oPrice { font-family: var(--serif); font-size: 18px; font-weight: 700; color: var(--gold-deep); flex-shrink: 0; }
+
+.poojaBlurb { font-size: 13.5px; color: var(--ink-soft); line-height: 1.55; margin-bottom: 12px; }
+.includeList { list-style: none; display: flex; flex-direction: column; gap: 9px; margin-bottom: 20px; }
+.includeList li {
+  position: relative; padding-left: 24px; font-size: 13.5px; color: var(--ink); line-height: 1.5;
+}
+.includeList li::before {
+  content: ''; position: absolute; left: 0; top: 3px; width: 15px; height: 15px; border-radius: 50%;
+  background: var(--gold-deep) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7' stroke='%23fff' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/10px no-repeat;
+}
+
+.sectionLabel {
+  font-size: 11.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--ink-soft); margin-bottom: 9px;
+}
+
+/* the purohit who will actually be on the call — face, credentials and
+   years of experience, so the devotee knows who they're booking */
+.astroCard {
+  display: flex; align-items: center; gap: 13px; padding: 13px;
+  border-radius: 16px; background: var(--cream); box-shadow: inset 0 0 0 1px var(--hair);
+}
+.astroPhoto {
+  width: 66px; height: 66px; border-radius: 50%; object-fit: cover; object-position: 50% 22%;
+  flex-shrink: 0; box-shadow: 0 0 0 2.5px var(--gold), 0 6px 16px rgba(122, 72, 36, .22);
+  background: var(--panel);
+}
+.astroMeta { min-width: 0; }
+.astroName { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+.astroSub { font-size: 12.5px; color: var(--ink-soft); line-height: 1.45; margin-bottom: 7px; }
+.astroTags { display: flex; flex-wrap: wrap; gap: 6px; }
+.astroTag {
+  font-size: 11px; font-weight: 700; color: var(--gold-deep); background: rgba(197, 124, 34, .12);
+  padding: 4px 9px; border-radius: 999px; white-space: nowrap;
+}
+
+/* pay bar docked to the bottom of the phone: the amount stays visible and
+   the CTA stays under the thumb no matter how far the detail scrolls */
+.hasDock { padding-bottom: 108px; }
+.payDock {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: rgba(255, 250, 243, .92); backdrop-filter: blur(16px);
+  box-shadow: 0 -8px 24px rgba(122, 72, 36, .1), inset 0 1px 0 var(--hair);
+}
+.payDockPrice { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+.payDockAmt { font-family: var(--serif); font-size: 21px; font-weight: 700; color: var(--ink); }
+.payDockNote { font-size: 10.5px; color: var(--ink-soft); }
+.payDockCta { margin-top: 0; flex: 1 1 auto; padding: 15px; }
 
 .errText { color: var(--danger); font-size: 13.5px; margin-top: 12px; text-align: center; }
 
@@ -166,7 +221,6 @@ button:active:not([disabled]), .poojaCard:active { transform: scale(.96); }
   padding: calc(14px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom));
   gap: 12px;
 }
-.callTopBar { width: 100%; max-width: 460px; display: flex; justify-content: flex-end; flex-shrink: 0; }
 .callVideoWrap {
   position: relative; width: 100%; max-width: 460px; flex: 1 1 auto; min-height: 0;
   border-radius: 22px; overflow: hidden; background: #14100C;
@@ -199,28 +253,29 @@ button:active:not([disabled]), .poojaCard:active { transform: scale(.96); }
 .callOverlay p { font-size: 15px; font-weight: 600; }
 .spinner { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(255, 191, 110, .3); border-top-color: var(--gold); animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+/* end call: pinned to the bottom-right of the dock, the position users
+   already expect from every other calling app */
+.callControls { width: 100%; max-width: 460px; display: flex; justify-content: flex-end; }
 .endCallBtn {
-  background: var(--danger); color: #fff; border: 0; border-radius: 999px; padding: 11px 22px; cursor: pointer;
-  font-family: var(--sans); font-size: 13.5px; font-weight: 700; box-shadow: 0 8px 18px rgba(0, 0, 0, .35);
+  display: flex; align-items: center; gap: 8px;
+  background: var(--danger); color: #fff; border: 0; border-radius: 999px; padding: 12px 20px; cursor: pointer;
+  font-family: var(--sans); font-size: 13.5px; font-weight: 700; box-shadow: 0 8px 20px rgba(211, 47, 47, .45);
 }
+.endCallBtn svg { width: 19px; height: 19px; transform: rotate(133deg); }
 
-/* interactive prompts: mantra jaap + "I've done it" action confirm.
-   These sit as an overlay pinned to the bottom of the video frame (not a
-   flex sibling below it) so the purohit's video keeps its full height and
-   is never squeezed/cropped to make room for the prompt card. */
-.callActionBar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 7; padding: 14px; }
-.actionCard, .mantraCard {
+/* the dock below the video: whatever the current step asks of the devotee
+   (tap the diya / chant the mantra) sits here, with the end-call control
+   underneath it. The video keeps the whole area above. */
+.callDock {
+  width: 100%; max-width: 460px; flex-shrink: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.callActionBar { width: 100%; }
+.mantraCard {
   background: linear-gradient(180deg, rgba(255, 252, 246, .97) 0%, rgba(255, 244, 231, .97) 100%);
   border-radius: 18px; padding: 16px 18px; text-align: center;
   box-shadow: 0 10px 30px rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(197, 124, 34, .2);
 }
-.actionHint { font-size: 12.5px; font-weight: 700; color: var(--gold-deep); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
-.actionLabel { font-size: 14px; color: var(--ink); line-height: 1.5; margin-bottom: 12px; }
-.actionBtn {
-  width: 100%; background: var(--cta); color: #fff; border: 0; border-radius: 14px; padding: 14px; cursor: pointer;
-  font-family: var(--sans); font-size: 15px; font-weight: 700; box-shadow: 0 10px 22px -8px rgba(244, 87, 34, .6);
-}
-.actionBtn[disabled] { opacity: .65; pointer-events: none; }
 .mantraHint { font-size: 12.5px; font-weight: 700; color: var(--gold-deep); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
 .mantraText { font-family: var(--serif); font-size: 16px; color: var(--ink); line-height: 1.6; margin-bottom: 14px; }
 .mantraBtn {

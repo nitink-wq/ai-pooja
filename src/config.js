@@ -9,23 +9,45 @@
 //   'speech' — narration/mantra the persona just says, then auto-advances
 //   'mantra' — a mantra the DEVOTEE chants; after the persona says it once,
 //              the app shows a mic button and waits for a spoken match
-//   'action' — a physical action (light a diya, apply tilak); after the
-//              persona describes it, the app shows a button labelled with
-//              the action itself (e.g. "Light the Diya", from
-//              segment.buttonLabel) and waits for a tap, playing a small
-//              animation for segment.kind === 'diya'
+//   'action' — something the devotee completes by TAPPING on screen (the
+//              diya). Nothing in the flow may require a physical prop or
+//              off-screen gesture — a devotee on a phone with nothing in
+//              hand must be able to finish the whole pooja. After the
+//              persona describes it, the app shows the tap target and
+//              plays the animation for segment.kind === 'diya'.
 //
 // jaapMantras[0] is always the shared Ganesh mantra (used right after the
 // sankalp); the rest are this pooja's own mantras. Every mantra/havan line
 // below is marked "EXAMPLE ONLY" — standard/traditional mantras used to
 // unblock testing, not yet vetted for this specific ritual sequence. Swap
 // in the final reviewed mantras before this goes live.
+//
+// durationMin/includes are shown on the confirm-and-pay screen so the
+// devotee knows exactly what they're buying before paying.
+
+// The purohit who performs every pooja. Shown on the pay screen (photo +
+// credentials) and named in the ritual script itself.
+export const PANDIT = {
+  name: 'Pandit Nitin Sharma',
+  nameHi: 'पंडित नितिन शर्मा',
+  photo: 'pandit.jpg',
+  experienceYears: 15,
+  specialisation: 'Vedic karmakand & graha shanti',
+  temple: 'Kashi Vishwanath tradition',
+};
+
 export const POOJAS = [
   {
     id: 'navgraha-shanti',
     name: 'Navgraha Shanti Pooja',
     description: 'Pacify the nine planetary forces and clear the obstacles they are casting on your life.',
     priceInr: 299,
+    durationMin: 12,
+    includes: [
+      'Personalised sankalp in your name, gotra and birth details',
+      'Navgraha jaap + havan aahuti performed live with you',
+      'Ganesh mantra chanted together for your sankalp',
+    ],
     poojaLabel: 'नवग्रह शांति पूजा',
     ritualContext: 'नवग्रह शांति पूजा — नौ ग्रहों को शांत करने और उनके अशुभ प्रभाव से उत्पन्न बाधाओं को दूर करने हेतु',
     chantIntro: 'अब मैं जो मंत्र बोलूं, उसे आप मेरे साथ ऊँची और स्पष्ट आवाज़ में तीन बार दोहराएँ — इससे नवग्रहों की शांति और उनका शुभ प्रभाव प्राप्त होता है।',
@@ -45,6 +67,12 @@ export const POOJAS = [
     name: 'Buri Nazar Nivaran Pooja',
     description: 'Remove the evil eye and negative energy that is blocking your peace, health or progress.',
     priceInr: 399,
+    durationMin: 12,
+    includes: [
+      'Personalised sankalp in your name, gotra and birth details',
+      'Rudra jaap + nazar-nivaran havan performed live with you',
+      'Ganesh mantra chanted together for your sankalp',
+    ],
     poojaLabel: 'बुरी नज़र निवारण पूजा',
     ritualContext: 'बुरी नज़र निवारण पूजा — बुरी नज़र और नकारात्मक ऊर्जा को दूर करने हेतु',
     chantIntro: 'अब मैं जो मंत्र बोलूं, उसे आप मेरे साथ श्रद्धापूर्वक तीन बार दोहराएँ — इससे बुरी नज़र और नकारात्मक ऊर्जा दूर होती है।',
@@ -64,6 +92,12 @@ export const POOJAS = [
     name: 'Prem Milan Pooja',
     description: 'Invoke divine blessings to resolve conflicts and bring harmony into your relationship.',
     priceInr: 249,
+    durationMin: 12,
+    includes: [
+      'Personalised sankalp in your name, gotra and birth details',
+      'Kamdev & Uma-Maheshwar jaap with havan aahuti',
+      'Ganesh mantra chanted together for your sankalp',
+    ],
     poojaLabel: 'प्रेम मिलन पूजा',
     ritualContext: 'प्रेम मिलन पूजा — रिश्ते में सामंजस्य, समझ और मिलन हेतु दिव्य आशीर्वाद के आह्वान के लिए',
     chantIntro: 'अब मैं जो मंत्र बोलूं, उसे आप प्रेमपूर्वक मन से तीन बार दोहराएँ — इससे आपके रिश्ते में सामंजस्य और मिलन का आशीर्वाद मिलता है।',
@@ -106,11 +140,11 @@ var PANDIT_NAME = 'पंडित नितिन';
 //
 // Shape of the ritual (per user direction, not just an AI-disclosure demo):
 //  1. a short warm greeting — no "I am an AI" preamble
-//  2. light the diya
+//  2. light the diya (a tap on screen, not a real lamp)
 //  3. one continuous ~1-minute block of sankalp + mantras + havan, spoken as
 //     a single segment so there's no pause/break partway through it
 //  4. exactly one moment where the devotee chants a shloka themselves
-//  5. tilak, then a warm closing — the call then auto-ends (see app.js)
+//  5. a warm closing — the call then auto-ends (see app.js)
 export function buildFlow(pooja, devotee) {
   var name = devotee.name;
   var gotra = devotee.gotra || 'कश्यप गोत्र';
@@ -123,7 +157,8 @@ export function buildFlow(pooja, devotee) {
   ));
 
   flow.push(action(
-    'सबसे पहले हम दीप प्रज्वलित करेंगे। कृपया अपना दीया जलाएँ।',
+    'सबसे पहले हम दीप प्रज्वलित करेंगे। स्क्रीन पर दिख रहे दीये को स्पर्श कीजिए — ' +
+    'यही आपका दीप प्रज्वलन है।',
     { kind: 'diya', buttonLabel: '🪔 Light the Diya' }
   ));
 
@@ -145,12 +180,6 @@ export function buildFlow(pooja, devotee) {
   // narrated portion and the closing — not at the very start or end.
   flow.push(speech(pooja.chantIntro));
   flow.push(mantra(pooja.jaapMantras[0]));
-
-  flow.push(action(
-    'समापन में मैं भस्म से आपके मस्तक पर तिलक करने का भाव अर्पित करता हूँ — यह ईश्वर का ' +
-    'आशीर्वाद है। कृपया अपने माथे पर एक हल्का तिलक लगाएँ।',
-    { kind: 'tilak', buttonLabel: '🙏 Apply Tilak' }
-  ));
 
   flow.push(speech(
     'आपकी ' + pooja.poojaLabel + ' सम्पन्न हुई। ॐ शांति शांति शांति। ईश्वर की कृपा सदा आप और ' +

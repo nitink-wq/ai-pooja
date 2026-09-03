@@ -6,7 +6,7 @@ import express from 'express';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { POOJAS, findPooja } from './config.js';
+import { POOJAS, PANDIT, findPooja } from './config.js';
 import { createOrder, verifyPaymentSignature, getPublicKeyId, RAZORPAY_MOCK_MODE } from './services/razorpay.js';
 import { createSession, ANAM_MOCK_MODE } from './services/anam.js';
 
@@ -52,8 +52,16 @@ function verifyPayToken(token, poojaId) {
 }
 
 // --- API ---------------------------------------------------------------------
+// Only the presentational fields go to the client — the mantras and the
+// ritual script stay server-side and reach the browser solely as a built
+// flow, once a call actually starts.
 app.get('/api/poojas', (req, res) => {
-  res.json({ poojas: POOJAS.map(({ id, name, description, priceInr }) => ({ id, name, description, priceInr })) });
+  res.json({
+    poojas: POOJAS.map(({ id, name, description, priceInr, durationMin, includes }) => ({
+      id, name, description, priceInr, durationMin, includes,
+    })),
+    pandit: PANDIT,
+  });
 });
 
 app.post('/api/payment/order', async (req, res) => {

@@ -9,6 +9,7 @@
   var flow = ['landing']; // navigation stack, for the back button
 
   var POOJAS = [];
+  var PANDIT = null; // the purohit shown on the pay screen, from /api/poojas
   var MODE = { razorpayMock: true, anamMock: true };
   var session = {
     pooja: null,
@@ -88,9 +89,8 @@
 
   function selectPooja(p) {
     session.pooja = p;
-    el('orderRow').innerHTML =
-      '<span class="oName">' + escapeHtml(p.name) + '</span>' +
-      '<span class="oPrice">₹' + p.priceInr + '</span>';
+    renderOrderSummary(p);
+    renderPandit();
     el('mockNotice').textContent = MODE.razorpayMock
       ? 'Test mode: no real payment will be charged.'
       : '';
@@ -98,8 +98,35 @@
     el('retryPayBtn').classList.add('hidden');
     el('payBtn').classList.remove('hidden');
     el('payBtn').disabled = false;
-    el('payBtn').textContent = 'Pay now';
+    el('payBtn').textContent = PAY_CTA_LABEL;
     goTo('payment');
+  }
+
+  // What the devotee is buying: the pooja, how long it runs, and what the
+  // purohit will actually do on the call — shown before they pay, not after.
+  function renderOrderSummary(p) {
+    el('orderRow').innerHTML =
+      '<div class="oMain">' +
+        '<span class="oName">' + escapeHtml(p.name) + '</span>' +
+        '<span class="oMeta">Live 1-on-1 · about ' + (p.durationMin || 12) + ' min</span>' +
+      '</div>' +
+      '<span class="oPrice">₹' + p.priceInr + '</span>';
+    el('poojaBlurb').textContent = p.description || '';
+    el('includeList').innerHTML = (p.includes || [])
+      .map(function (line) { return '<li>' + escapeHtml(line) + '</li>'; })
+      .join('');
+    el('payDockAmt').textContent = '₹' + p.priceInr;
+  }
+
+  function renderPandit() {
+    if (!PANDIT) return;
+    el('astroPhoto').src = PANDIT.photo || 'pandit.jpg';
+    el('astroPhoto').alt = PANDIT.name || '';
+    el('astroName').textContent = PANDIT.name || '';
+    el('astroSub').textContent = PANDIT.specialisation || '';
+    el('astroTags').innerHTML =
+      '<span class="astroTag">' + (PANDIT.experienceYears || 15) + ' yrs experience</span>' +
+      (PANDIT.temple ? '<span class="astroTag">' + escapeHtml(PANDIT.temple) + '</span>' : '');
   }
 
   // ---- 2. payment ------------------------------------------------------------
@@ -167,7 +194,7 @@
           modal: {
             ondismiss: function () {
               el('payBtn').disabled = false;
-              el('payBtn').textContent = 'Pay now';
+              el('payBtn').textContent = PAY_CTA_LABEL;
             },
           },
         });
@@ -363,38 +390,30 @@
 
   function hideActionBar() {
     el('callActionBar').classList.add('hidden');
-    el('actionCard').classList.add('hidden');
     el('diyaTapWrap').classList.add('hidden');
     el('mantraCard').classList.add('hidden');
     el('diyaRise').classList.add('hidden');
     stopMantraRecognition();
   }
 
+  // Every 'action' segment is completed by tapping on screen — the ritual
+  // never asks the devotee for a physical prop or off-screen gesture, so the
+  // diya tap target is the only action UI there is.
   function showActionCard(seg) {
     stopMantraRecognition();
     el('callActionBar').classList.remove('hidden');
     el('mantraCard').classList.add('hidden');
     el('diyaRise').classList.add('hidden');
-    if (seg.kind === 'diya') {
-      el('actionCard').classList.add('hidden');
-      el('diyaTapWrap').classList.remove('hidden');
-      el('diyaTapHint').textContent = seg.text || 'Tap to light the diya.';
-      el('diyaTapBtn').disabled = false;
-      return;
-    }
-    el('diyaTapWrap').classList.add('hidden');
-    el('actionCard').classList.remove('hidden');
-    el('actionLabel').textContent = seg.text || 'Complete the action the purohit described.';
-    el('actionDoneBtn').textContent = seg.buttonLabel || "I've done this ✓";
-    el('actionDoneBtn').disabled = false;
-    el('actionDoneBtn').classList.remove('hidden');
+    el('diyaTapWrap').classList.remove('hidden');
+    el('diyaTapHint').textContent = seg.text || 'Tap to light the diya.';
+    el('diyaTapBtn').disabled = false;
   }
 
   function showMantraCard(seg) {
     session.currentMantraTarget = seg.text;
     session.mantraAttempts = 0;
     el('callActionBar').classList.remove('hidden');
-    el('actionCard').classList.add('hidden');
+    el('diyaTapWrap').classList.add('hidden');
     el('mantraCard').classList.remove('hidden');
     el('mantraText').textContent = seg.text;
     el('mantraHeard').textContent = '';
@@ -403,11 +422,6 @@
     el('mantraBtn').disabled = false;
     el('mantraBtn').textContent = '🎙️ Chant now';
     el('skipMantraBtn').classList.add('hidden');
-  }
-
-  function confirmActionDone() {
-    hideActionBar();
-    advanceFlow();
   }
 
   // A ring of diyas (bigger than the tap button's own icon) rises slowly
@@ -623,7 +637,6 @@
   }
 
   el('endCallBtn').addEventListener('click', endCall);
-  el('actionDoneBtn').addEventListener('click', confirmActionDone);
   el('diyaTapBtn').addEventListener('click', playDiyaRise);
   el('mantraBtn').addEventListener('click', startMantraRecognition);
   el('skipMantraBtn').addEventListener('click', function () {
@@ -645,8 +658,10 @@
     el('payError').classList.add('hidden');
     el('payBtn').classList.remove('hidden');
     el('payBtn').disabled = false;
-    el('payBtn').textContent = 'Pay now';
+    el('payBtn').textContent = PAY_CTA_LABEL;
   });
+
+  var PAY_CTA_LABEL = 'Complete payment';
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -663,6 +678,7 @@
     fetch('/api/mode').then(function (r) { return r.json(); }).catch(function () { return MODE; }),
   ]).then(function (results) {
     POOJAS = results[0].poojas || [];
+    PANDIT = results[0].pandit || null;
     MODE = results[1];
     renderPoojas();
   }).catch(function () {

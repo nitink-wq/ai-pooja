@@ -46,14 +46,37 @@
     </section>
 
     <!-- ---- 2. payment ------------------------------------------------------ -->
-    <section id="screen-payment" class="screen hidden">
+    <!-- scrollable detail + a pay bar docked to the bottom of the phone, so
+         the price and CTA are always reachable with a thumb -->
+    <section id="screen-payment" class="screen hidden hasDock">
       <div class="panel">
         <h2 class="serif">Confirm &amp; pay</h2>
+
         <div class="orderRow" id="orderRow"></div>
+        <p class="poojaBlurb" id="poojaBlurb"></p>
+        <ul class="includeList" id="includeList"></ul>
+
+        <p class="sectionLabel">Your purohit</p>
+        <div class="astroCard">
+          <img class="astroPhoto" id="astroPhoto" alt="" width="72" height="72">
+          <div class="astroMeta">
+            <p class="astroName" id="astroName"></p>
+            <p class="astroSub" id="astroSub"></p>
+            <div class="astroTags" id="astroTags"></div>
+          </div>
+        </div>
+
         <p class="fine" id="mockNotice"></p>
-        <button class="cta" id="payBtn">Pay now</button>
-        <button class="ghostBtn hidden" id="retryPayBtn">Try payment again</button>
         <p class="errText hidden" id="payError"></p>
+        <button class="ghostBtn hidden" id="retryPayBtn">Try payment again</button>
+      </div>
+
+      <div class="payDock">
+        <div class="payDockPrice">
+          <span class="payDockAmt" id="payDockAmt"></span>
+          <span class="payDockNote">one-time · incl. taxes</span>
+        </div>
+        <button class="cta payDockCta" id="payBtn">Complete payment</button>
       </div>
     </section>
 
@@ -88,9 +111,6 @@
     <!-- ---- 4. live avatar call ----------------------------------------------- -->
     <section id="screen-call" class="screen hidden fullbleed">
       <div class="callPanel">
-        <div class="callTopBar">
-          <button class="endCallBtn" id="endCallBtn">End Pooja</button>
-        </div>
         <div class="callVideoWrap" id="callVideoWrap">
           <video id="personaVideo" playsinline autoplay></video>
           <div class="mockAvatar hidden" id="mockAvatar">
@@ -106,15 +126,14 @@
                so the count/size can be tuned in one place. -->
           <div class="diyaRise hidden" id="diyaRise"></div>
 
-          <!-- interactive prompts overlay the video at the bottom instead of
-               taking a separate strip below it, so the purohit's video is
-               never squeezed/cropped to make room -->
+        </div>
+
+        <!-- everything the devotee can do sits in a dock BELOW the video:
+             the prompt for the current step, and the end-call control pinned
+             bottom-right. Every action here is completable by tapping — the
+             ritual never asks for a physical prop. -->
+        <div class="callDock">
           <div class="callActionBar hidden" id="callActionBar">
-            <div class="actionCard hidden" id="actionCard">
-              <p class="actionHint">The purohit asked you to</p>
-              <p class="actionLabel" id="actionLabel"></p>
-              <button class="actionBtn" id="actionDoneBtn">I've done this ✓</button>
-            </div>
             <!-- diya action: a single large tap target instead of a text card -->
             <div class="diyaTapWrap hidden" id="diyaTapWrap">
               <p class="diyaTapHint" id="diyaTapHint"></p>
@@ -134,6 +153,15 @@
               <p class="mantraStatus" id="mantraStatus"></p>
               <p class="mantraHeard hidden" id="mantraHeard"></p>
             </div>
+          </div>
+
+          <div class="callControls">
+            <button class="endCallBtn" id="endCallBtn" aria-label="End pooja">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M2.5 9.8c5.4-4 13.6-4 19 0 1 .8 1.2 2.2.4 3.2l-1.2 1.5c-.6.8-1.7 1-2.6.6l-2.5-1.2c-.7-.4-1.1-1.1-1-1.9l.1-1.3c-2-.6-4.2-.6-6.3 0l.1 1.3c.1.8-.3 1.5-1 1.9l-2.5 1.2c-.9.4-2 .2-2.6-.6L1.7 13c-.8-1-.6-2.4.8-3.2z" fill="currentColor"/>
+              </svg>
+              <span>End Pooja</span>
+            </button>
           </div>
         </div>
       </div>
