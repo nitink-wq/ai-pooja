@@ -44,24 +44,24 @@ export const PANDIT = {
 // stay the source of truth. This just tells the LLM behind that persona how
 // to behave, since the ritual content itself is never LLM-generated — every
 // word it speaks arrives as an exact line via talk() (see buildFlow below).
-export const ANAM_SYSTEM_PROMPT = `# Personality
-You are पंडित नितिन (Pandit Nitin), an experienced Vedic priest on AstroLokal's live "AI Pooja" video call. Warm, calm, unhurried, reverent — never robotic, never a call-center voice.
+export const ANAM_SYSTEM_PROMPT = `# पहचान (Personality)
+आप पंडित नितिन हैं — AstroLokal के लाइव "AI Pooja" वीडियो कॉल पर एक अनुभवी वैदिक पुरोहित। आपका स्वभाव स्नेहपूर्ण, शांत, धैर्यवान और श्रद्धामय है — कभी भी यांत्रिक या कॉल-सेंटर जैसा नहीं।
 
-# Environment
-This is a live one-on-one video call with a devotee who has already paid for a specific pooja. The entire ceremony — sankalp, mantras, havan, closing blessing — is scripted in advance by the app and sent to you as an ordered sequence of exact lines to speak. You are not composing or improvising the ritual.
+# परिवेश (Environment)
+यह एक श्रद्धालु के साथ लाइव, एक-से-एक वीडियो कॉल है जिसने एक विशेष पूजा के लिए पहले ही भुगतान कर दिया है। संपूर्ण अनुष्ठान — संकल्प, मंत्र, हवन, समापन आशीर्वाद — ऐप द्वारा पहले से लिखा गया है और आपको क्रमबद्ध, निश्चित पंक्तियों के रूप में भेजा जाता है, जिन्हें आपको बोलना है। आप अनुष्ठान की रचना या सुधार नहीं कर रहे हैं।
 
-# Tone
-Speak only in Hindi, in a gentle devotional cadence, the way a priest speaks in someone's home — not a script reader, not a chatbot. Never switch to English. Never add jokes, small talk, or your own commentary before or after a scripted line.
+# स्वर (Tone)
+केवल हिंदी में बोलें, एक सौम्य, भक्तिपूर्ण लय में — जैसे कोई पुरोहित किसी के घर में पूजा करा रहा हो, न कि स्क्रिप्ट पढ़ने वाला यंत्र। अंग्रेज़ी में कभी न बदलें। किसी भी पंक्ति से पहले या बाद में अपनी ओर से मज़ाक, गपशप या टिप्पणी न जोड़ें।
 
-# Goal
-Your only job is to speak each line you are given exactly as written, in order, then wait for the next one. Do not paraphrase, shorten, expand, or insert your own words into the ritual — the app's on-screen buttons and pacing are timed to the exact scripted text, and any improvisation puts your speech out of sync with what the devotee sees.
+# लक्ष्य (Goal)
+आपका एकमात्र कार्य है — जो पंक्ति आपको दी जाए, उसे बिल्कुल वैसे ही, क्रम से बोलना, फिर अगली पंक्ति की प्रतीक्षा करना। अनुष्ठान में अपने शब्द न जोड़ें, न पंक्तियों को छोटा/बड़ा करें, न शब्द बदलें — ऐप के बटन और समय ठीक उसी लिखित पाठ के अनुसार तय होते हैं, और कोई भी बदलाव श्रद्धालु की स्क्रीन से आपकी वाणी को असंगत कर देगा।
 
-# Guardrails
-- You know nothing about the devotee beyond their name as given in a line — no birth chart, horoscope, or personal history exists for you to reference.
-- Never give medical, legal, financial, or relationship advice, even if asked directly — say that is beyond what this call is for, and return to the ritual.
-- Never volunteer that you are an AI; never deny it if asked directly and plainly.
-- The devotee's microphone is off for the entire call — you will never hear a question or interruption from them, so never react as if you did.
-- If there is a silent gap, stay silent. Do not fill it with generated speech — the next scripted line will always be sent to you.`;
+# मर्यादाएँ (Guardrails)
+- आप श्रद्धालु के बारे में केवल उतना ही जानते हैं जितना किसी पंक्ति में उनके नाम के रूप में दिया गया है — कोई जन्म कुंडली, राशिफल या व्यक्तिगत इतिहास आपके पास नहीं है।
+- चिकित्सा, कानूनी, वित्तीय या रिश्तों से जुड़ी कोई सलाह कभी न दें, भले ही सीधे पूछा जाए — विनम्रता से कहें कि यह पूजा कॉल का विषय नहीं है, और अनुष्ठान पर वापस लौट आएं।
+- आप कभी भी स्वयं को AI, अवतार, प्रोग्राम या मशीन के रूप में वर्णित न करें — चाहे पूछा जाए या न पूछा जाए। सदैव पंडित नितिन के रूप में ही बने रहें, और विषय बदलकर पूजा पर वापस लौट आएं।
+- श्रद्धालु का माइक्रोफ़ोन पूरी कॉल के दौरान बंद रहता है — आप उनका कोई प्रश्न या बाधा कभी नहीं सुनेंगे, इसलिए ऐसा व्यवहार कभी न करें जैसे आपने कुछ सुना हो।
+- यदि कनेक्शन में कोई रुकावट, मौन अंतराल, या श्रद्धालु की ओर से कोई प्रतिक्रिया न आए, तो कभी भी अनुष्ठान को शुरुआत से दोबारा न बोलें। शांत रहें और अपनी ओर से कुछ न बोलें — अगली पंक्ति हमेशा ठीक वहीं से भेजी जाएगी जहाँ अनुष्ठान रुका था; आपको केवल प्रतीक्षा करनी है।`;
 
 export const POOJAS = [
   {
@@ -121,13 +121,25 @@ export const POOJAS = [
     poojaLabel: 'बुरी नज़र निवारण पूजा',
     ritualContext: 'बुरी नज़र निवारण पूजा — बुरी नज़र और नकारात्मक ऊर्जा को दूर करने हेतु',
     chantIntro: 'अब मैं जो मंत्र बोलूं, उसे आप मेरे साथ श्रद्धापूर्वक तीन बार दोहराएँ — इससे बुरी नज़र और नकारात्मक ऊर्जा दूर होती है।',
+    // Same treatment as navgraha-shanti: [0] shared Ganesh mantra, [1] a
+    // spoken dhyan/aavahan line, [2..N] named invocations to the rakshak
+    // devtas traditionally invoked against nazar dosh, then a closing
+    // benediction — stretching this to a proper 2-3 minute upcharan.
     jaapMantras: [
       'ओम् गं गणपतये नमः',
-      'ओम् नमो भगवते रुद्राय नमः',
-      'ओम् दृष्टि दोष निवारणाय नमः शिवाय नमः',
+      'अब हम भगवान गणेश का स्मरण कर, बुरी नज़र और नकारात्मक ऊर्जा के निवारण हेतु रक्षक देवी-देवताओं का ध्यान और आवाहन करते हैं...',
+      'भगवान शिव के निमित्त — ओम् नमो भगवते रुद्राय नमः।',
+      'माँ दुर्गा के निमित्त — ओम् दुं दुर्गायै नमः।',
+      'हनुमान जी के निमित्त — ओम् हं हनुमते नमः।',
+      'काल भैरव के निमित्त — ओम् कालभैरवाय नमः।',
+      'भगवान नृसिंह के निमित्त — ओम् उग्रं वीरं महाविष्णुं ज्वलन्तं सर्वतोमुखम्।',
+      'ओम् दृष्टि दोष निवारणाय नमः शिवाय नमः।',
+      'समस्त रक्षक देवगण, अपनी कृपा दृष्टि सदैव बनाए रखें और समस्त नकारात्मकता को दूर करें।',
     ],
     havanMantras: [
       'ओम् नमो भगवते रुद्राय स्वाहा',
+      'ओम् दुं दुर्गायै स्वाहा',
+      'ओम् हं हनुमते स्वाहा',
       'ओम् सर्व नज़र दोष निवारणाय नमः स्वाहा',
       'ओम् रक्षा कवचाय नमः स्वाहा',
     ],
@@ -146,15 +158,26 @@ export const POOJAS = [
     poojaLabel: 'प्रेम मिलन पूजा',
     ritualContext: 'प्रेम मिलन पूजा — रिश्ते में सामंजस्य, समझ और मिलन हेतु दिव्य आशीर्वाद के आह्वान के लिए',
     chantIntro: 'अब मैं जो मंत्र बोलूं, उसे आप प्रेमपूर्वक मन से तीन बार दोहराएँ — इससे आपके रिश्ते में सामंजस्य और मिलन का आशीर्वाद मिलता है।',
+    // Same treatment as navgraha-shanti: [0] shared Ganesh mantra, [1] a
+    // spoken dhyan/aavahan line, [2..N] named invocations to the devi-devtas
+    // traditionally invoked for prem/vivah harmony, then a closing
+    // benediction — stretching this to a proper 2-3 minute upcharan.
     jaapMantras: [
       'ओम् गं गणपतये नमः',
-      'ओम् कामदेवाय विद्महे पुष्पबाणाय धीमहि। तन्नो अनंगः प्रचोदयात्।',
-      'ओम् पार्वती पतये नमः',
+      'अब हम भगवान गणेश का स्मरण कर, प्रेम, सामंजस्य और मिलन के देवी-देवताओं का ध्यान और आवाहन करते हैं...',
+      'कामदेव के निमित्त — ओम् कामदेवाय विद्महे पुष्पबाणाय धीमहि। तन्नो अनंगः प्रचोदयात्।',
+      'रति देवी के निमित्त — ओम् रत्यै नमः।',
+      'भगवान शिव-पार्वती के निमित्त — ओम् पार्वती पतये नमः।',
+      'राधा-कृष्ण के निमित्त — ओम् राधा कृष्णाय नमः।',
+      'भगवान विष्णु के निमित्त — ओम् नमो नारायणाय।',
+      'समस्त देवी-देवता, इस रिश्ते में प्रेम, विश्वास और सामंजस्य सदैव बनाए रखें।',
     ],
     havanMantras: [
       'ओम् कामदेवाय नमः स्वाहा',
-      'ओम् प्रेम मिलन सिद्धये नमः स्वाहा',
+      'ओम् रत्यै नमः स्वाहा',
       'ओम् उमा महेश्वराभ्यां नमः स्वाहा',
+      'ओम् राधा कृष्णाय नमः स्वाहा',
+      'ओम् प्रेम मिलन सिद्धये नमः स्वाहा',
     ],
   },
 ];
@@ -173,10 +196,6 @@ function action(text, opts) {
   return Object.assign({ type: 'action', text }, opts || {});
 }
 
-// The astro's name is always "पंडित नितिन" — written in Devanagari, not
-// Latin script, so it never breaks the flow of otherwise-Hindi speech.
-var PANDIT_NAME = 'पंडित नितिन';
-
 // Builds the ordered, per-devotee segment list for a live call. Every
 // segment's text is spoken via talk() — deterministic, not LLM-generated —
 // so the app always knows exactly when to pause for a mantra/action and
@@ -190,11 +209,16 @@ var PANDIT_NAME = 'पंडित नितिन';
 // within earshot.
 //
 // Shape of the ritual (per user direction, not just an AI-disclosure demo):
-//  1. a short warm greeting — no "I am an AI" preamble
+//  1. a short warm greeting straight into the pooja — no self-introduction
+//     ("I am Pandit Nitin" / "I am an avatar"), just the greeting and
+//     straight into doing the pooja
 //  2. light the diya (a tap on screen, not a real lamp)
 //  3. one continuous ~2-3 minute block of sankalp + mantras + havan, spoken
 //     a single segment so there's no pause/break partway through it
-//  4. exactly one moment where the devotee chants a shloka themselves
+//  4. exactly one moment where the devotee chants a shloka themselves,
+//     followed by a short spoken acknowledgement (see confirmMantraDone in
+//     app.js: a button tap is always treated as a correct chant, and this
+//     line is what the astro actually says back before closing)
 //  5. a warm closing — the call then auto-ends (see app.js)
 export function buildFlow(pooja, devotee) {
   var name = devotee.name;
@@ -202,8 +226,8 @@ export function buildFlow(pooja, devotee) {
   var flow = [];
 
   flow.push(speech(
-    'नमस्ते ' + name + ' जी। मैं ' + PANDIT_NAME + ' हूँ। आज मैं आपके साथ मिलकर ' +
-    pooja.poojaLabel + ' पूर्ण श्रद्धा और विधि-विधान से सम्पन्न करूँगा। कृपया हाथ जोड़कर, ' +
+    'नमस्ते ' + name + ' जी। आज हम साथ मिलकर ' + pooja.poojaLabel +
+    ' पूर्ण श्रद्धा और विधि-विधान से सम्पन्न करेंगे। कृपया हाथ जोड़कर, ' +
     'शांत मन से मेरे साथ जुड़ें।'
   ));
 
@@ -239,6 +263,12 @@ export function buildFlow(pooja, devotee) {
   // narrated portion and the closing — not at the very start or end.
   flow.push(speech(pooja.chantIntro));
   flow.push(mantra(pooja.jaapMantras[0], 'Chant now'));
+
+  // Spoken acknowledgement of the chant — the app always treats a mic-button
+  // tap as a correct chant (see app.js confirmMantraDone/startMantraRecognition),
+  // so this is the astro's actual response confirming that and moving on,
+  // rather than silently jumping to the closing line.
+  flow.push(speech('उत्तम, आपने श्रद्धा और स्पष्ट उच्चारण के साथ मंत्र का जाप किया।'));
 
   flow.push(speech(
     'आपकी ' + pooja.poojaLabel + ' सम्पन्न हुई। ॐ शांति शांति शांति। ईश्वर की कृपा सदा आप और ' +
