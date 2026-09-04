@@ -657,6 +657,18 @@
   // ---- shared -----------------------------------------------------------------
   el('backBtn').addEventListener('click', goBack);
   el('payBtn').addEventListener('click', startPayment);
+
+  // Redirect-mode checkout navigates the whole page away. Coming back — the
+  // device back button from the bank page, or a swipe-back gesture — restores
+  // this page from the browser's back/forward cache with its JS state frozen
+  // exactly as it was, so the pay button stays disabled on "Starting
+  // payment…" and the devotee is stuck on a dead screen. Re-enable it.
+  window.addEventListener('pageshow', function (e) {
+    if (!e.persisted) return;
+    if (!el('payBtn').disabled) return;
+    el('payBtn').disabled = false;
+    el('payBtn').textContent = PAY_CTA_LABEL;
+  });
   el('retryPayBtn').addEventListener('click', function () {
     el('retryPayBtn').classList.add('hidden');
     el('payError').classList.add('hidden');

@@ -7,7 +7,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { POOJAS, PANDIT, findPooja } from './config.js';
-import { createOrder, verifyPaymentSignature, getPublicKeyId, RAZORPAY_MOCK_MODE } from './services/razorpay.js';
+import { createOrder, fetchOrder, verifyPaymentSignature, getPublicKeyId, RAZORPAY_MOCK_MODE } from './services/razorpay.js';
 import { createSession, ANAM_MOCK_MODE } from './services/anam.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -95,8 +95,8 @@ function verifyPayToken(token, poojaId) {
 // Shared by the JSON verify route and the redirect-mode callback: checks the
 // order token, that Razorpay's order id is the one we minted it for, and the
 // payment signature. Returns a payToken, or null.
-function settlePayment({ orderToken, orderId, paymentId, signature }) {
-  const order = readOrderToken(orderToken);
+function settlePayment({ orderToken, order: knownOrder, orderId, paymentId, signature }) {
+  const order = knownOrder || readOrderToken(orderToken);
   if (!order || !orderId || !paymentId) return null;
   if (order.orderId !== orderId) return null;
   if (!verifyPaymentSignature({ orderId, paymentId, signature })) return null;
@@ -160,9 +160,9 @@ app.post('/api/payment/verify', (req, res) => {
 // payment — and all of its in-memory state — is gone by now. We finish by
 // sending the browser back into the app with the payToken, where app.js
 // resumes at the details form (see resumeFromPaymentRedirect).
-app.post('/api/payment/callback', (req, res) => {
+app.post('/api/payment/callback', async (req, res) => {
   const orderToken = req.query.ot;
-  const order = readOrderToken(orderToken);
+  let order = readOrderToken(orderToken);
   const back = (params) => res.redirect(303, '/?' + new URLSearchParams(params).toString());
   const b = req.body || {};
   // Operational only — booleans and Razorpay ids, never devotee details. This
@@ -173,10 +173,28 @@ app.post('/api/payment/callback', (req, res) => {
     hasSignature: !!b.razorpay_signature, errorCode: (b.error && b.error.code) || b['error[code]'] || null,
     ua: (req.get('user-agent') || '').slice(0, 80),
   }));
+  // Fallback for a lost order token. It rides in the callback URL's query
+  // string, and we do not control whether every browser/gateway hop on the
+  // way back from a bank preserves it. When it is missing, recover the pooja
+  // from the order itself: createOrder stamps notes.poojaId, which only our
+  // server can set, so this is no weaker than the token — and the signature
+  // is still what proves the payment.
+  if (!order && b.razorpay_order_id) {
+    try {
+      const fetched = await fetchOrder(b.razorpay_order_id);
+      const poojaId = fetched && fetched.notes && fetched.notes.poojaId;
+      if (poojaId && findPooja(poojaId)) {
+        order = { poojaId, orderId: fetched.id };
+        console.log('[payment/callback] order token missing — recovered pooja from order notes');
+      }
+    } catch (err) {
+      console.error('[payment/callback] order lookup failed:', err.message);
+    }
+  }
   if (!order) return back({ payFailed: 'expired' });
 
   const settled = settlePayment({
-    orderToken,
+    order,
     orderId: b.razorpay_order_id,
     paymentId: b.razorpay_payment_id,
     signature: b.razorpay_signature,
