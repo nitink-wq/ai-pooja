@@ -275,7 +275,7 @@
       .catch(function () {
         el('startCallBtn').disabled = false;
         el('startCallBtn').textContent = 'Begin live pooja';
-        alert('Could not connect to your astro. Please try again.');
+        alert('आपके पंडित जी से संपर्क नहीं हो सका। कृपया पुनः प्रयास करें।');
       });
   });
 
@@ -291,10 +291,10 @@
     // name the astro on the call itself, not just on the pay screen
     if (PANDIT) {
       el('callAstroPhoto').src = PANDIT.photo || 'pandit.jpg';
-      el('callAstroName').textContent = PANDIT.name || '';
+      el('callAstroName').textContent = PANDIT.nameHi || PANDIT.name || '';
     }
     hideActionBar();
-    setCallStatus('Connecting you to your astro…');
+    setCallStatus('आपके पंडित जी से जोड़ रहे हैं…');
     if (data.mock) return mockCall(data.flow);
     realCall(data.sessionToken, data.flow);
   }
@@ -451,8 +451,8 @@
     // no caption here — the button's own label already says it, and a
     // duplicate line over the video is just noise
     setCaption('', '');
-    setDockStatus('Tap the diya to light it');
-    setMainControl('diya', seg.uiLabel || 'Light the diya');
+    setDockStatus('दीया जलाने हेतु स्पर्श करें');
+    setMainControl('diya', seg.uiLabel || 'दीया जलाएँ');
     el('diyaTapBtn').disabled = false;
   }
 
@@ -460,10 +460,10 @@
     session.currentMantraTarget = seg.text;
     session.mantraAttempts = 0;
     show('diyaRise', false);
-    setCaption('Chant this mantra', seg.text);
-    setMainControl('mic', seg.uiLabel || 'Chant along');
+    setCaption('यह मंत्र बोलें', seg.text);
+    setMainControl('mic', seg.uiLabel || 'मंत्र बोलें');
     setSkipVisible(false);
-    setDockStatus('Tap the mic and chant along with the astro');
+    setDockStatus('माइक दबाएँ और पंडित जी के साथ मंत्र बोलें');
     el('mantraBtn').disabled = false;
     el('mantraBtn').classList.remove('listening');
   }
@@ -510,7 +510,7 @@
     el('diyaTapBtn').disabled = true;
     setMainControl(null, '');
     setCaption('', '');
-    setDockStatus('Diya lit \u2014 the pooja begins');
+    setDockStatus('दीया प्रज्वलित — पूजा प्रारंभ');
     el('diyaRise').classList.remove('hidden');
     setTimeout(function () {
       el('diyaRise').classList.add('hidden');
@@ -618,16 +618,16 @@
       var result = mantraSimilarity(said, session.currentMantraTarget);
       var minMatches = Math.min(2, result.targetWordCount);
       if (said && result.score >= 0.5 && result.matches >= minMatches) {
-        setDockStatus('Mantra accepted ✓');
+        setDockStatus('मंत्र स्वीकार हुआ ✓');
         confirmMantraDone();
       } else {
-        markMantraAttemptFailed(said ? 'Not clear — please chant the mantra again.' : 'Could not hear you — please try again.');
+        markMantraAttemptFailed(said ? 'स्पष्ट नहीं सुनाई दिया — कृपया मंत्र दोबारा बोलें।' : 'आवाज़ नहीं सुनाई दी — कृपया पुनः प्रयास करें।');
       }
     }
 
     el('mantraBtn').disabled = true;
     el('mantraBtn').classList.add('listening');
-    setDockStatus('Listening…');
+    setDockStatus('सुन रहे हैं…');
 
     rec.onresult = function (e) {
       for (var i = e.resultIndex; i < e.results.length; i++) {
@@ -661,7 +661,7 @@
     hardTimeout = setTimeout(function () {
       try { rec.stop(); } catch (err) { /* already stopped */ }
       endGrace = setTimeout(function () {
-        if (!settled) { settled = true; markMantraAttemptFailed('Could not hear you — please try again.'); }
+        if (!settled) { settled = true; markMantraAttemptFailed('आवाज़ नहीं सुनाई दी — कृपया पुनः प्रयास करें।'); }
       }, 1500);
     }, 7000);
 

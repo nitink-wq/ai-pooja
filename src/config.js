@@ -51,15 +51,33 @@ export const POOJAS = [
     poojaLabel: 'नवग्रह शांति पूजा',
     ritualContext: 'नवग्रह शांति पूजा — नौ ग्रहों को शांत करने और उनके अशुभ प्रभाव से उत्पन्न बाधाओं को दूर करने हेतु',
     chantIntro: 'अब मैं जो मंत्र बोलूं, उसे आप मेरे साथ ऊँची और स्पष्ट आवाज़ में तीन बार दोहराएँ — इससे नवग्रहों की शांति और उनका शुभ प्रभाव प्राप्त होता है।',
+    // jaapMantras[0] stays the shared Ganesh mantra. [1] is a spoken
+    // dhyan/aavahan line (not a mantra itself — narration that introduces
+    // the nine-graha invocation), and [2..10] are the nine graha beej
+    // mantras in order (Surya through Ketu), each named aloud before its
+    // mantra so the recitation reads as a real invocation rather than a
+    // bare list. This is what stretches segment 3 out to a proper 2-3
+    // minute upcharan instead of a ~1-minute pass.
     jaapMantras: [
       'ओम् गं गणपतये नमः',
-      'ओम् ऐं ह्रीं क्लीं नवग्रह देवताभ्यो नमः',
-      'ओम् सूर्याय च चंद्राय च मंगलाय बुधाय च। गुरु शुक्र शनिभ्यश्च राहवे केतवे नमः।',
+      'अब हम भगवान गणेश का स्मरण कर, क्रम से नवग्रह देवताओं का ध्यान और आवाहन करते हैं...',
+      'सूर्य देव के निमित्त — ॐ हरिं ॐ सूर्याय नमः।',
+      'चन्द्र देव के निमित्त — ॐ श्रां श्रीं श्रौं सः चन्द्रमसे नमः।',
+      'मंगल देव के निमित्त — ॐ अं अंगारकाय नमः।',
+      'बुध देव के निमित्त — ॐ बुं बुधाय नमः।',
+      'बृहस्पति देव के निमित्त — ॐ ग्रां ग्रीं ग्रौं सः गुरवे नमः।',
+      'शुक्र देव के निमित्त — ॐ द्रां द्रीं द्रौं सः शुक्राय नमः।',
+      'शनि देव के निमित्त — ॐ प्रां प्रीं प्रौं सः शनैश्चराय नमः।',
+      'राहु देव के निमित्त — ॐ भ्रां भ्रीं भ्रौं सः राहवे नमः।',
+      'केतु देव के निमित्त — ॐ स्रां स्रीं स्रौं सः केतवे नमः।',
+      'नवग्रह देवगण, अपनी कृपा दृष्टि सदैव बनाए रखें और शुभ फल प्रदान करें।',
     ],
     havanMantras: [
       'ओम् नवग्रह देवताभ्यो नमः स्वाहा',
       'ओम् ह्रां ह्रीं ह्रौं सः सूर्याय नमः स्वाहा',
       'ओम् सर्व ग्रह पीड़ा निवारणाय नमः स्वाहा',
+      'ओम् सर्व नवग्रह शान्तिं कुरु कुरु स्वाहा',
+      'ओम् सर्व कष्ट निवारणाय नमः स्वाहा',
     ],
   },
   {
@@ -147,7 +165,7 @@ var PANDIT_NAME = 'पंडित नितिन';
 // Shape of the ritual (per user direction, not just an AI-disclosure demo):
 //  1. a short warm greeting — no "I am an AI" preamble
 //  2. light the diya (a tap on screen, not a real lamp)
-//  3. one continuous ~1-minute block of sankalp + mantras + havan, spoken as
+//  3. one continuous ~2-3 minute block of sankalp + mantras + havan, spoken
 //     a single segment so there's no pause/break partway through it
 //  4. exactly one moment where the devotee chants a shloka themselves
 //  5. a warm closing — the call then auto-ends (see app.js)
@@ -165,7 +183,7 @@ export function buildFlow(pooja, devotee) {
   flow.push(action(
     'सबसे पहले हम दीप प्रज्वलित करेंगे। स्क्रीन पर दिख रहे दीये को स्पर्श कीजिए — ' +
     'यही आपका दीप प्रज्वलन है।',
-    { kind: 'diya', uiLabel: 'Light the diya' }
+    { kind: 'diya', uiLabel: 'दीया जलाएँ' }
   ));
 
   // One continuous recitation — sankalp, the pooja's own mantras, and the
@@ -173,19 +191,27 @@ export function buildFlow(pooja, devotee) {
   // instead of several chained ones, so it plays start to finish the way a
   // real Hindi pooja does, with no pause or UI interruption partway through.
   var continuousParts = [
-    'ॐ, अद्य ' + gotra + ' में जन्मे ' + name + ' जी के निमित्त यह संकल्प लिया जाता है कि ' +
-      pooja.poojaLabel + ' का अनुष्ठान श्रद्धा और विश्वास के साथ संपन्न किया जाए, और ' + name +
+    'ॐ... समस्त देवी-देवताओं का आवाहन करते हुए, अद्य ' + gotra + ' में जन्मे ' + name +
+      ' जी के निमित्त यह संकल्प लिया जाता है, कि ' + pooja.poojaLabel +
+      ' का अनुष्ठान... श्रद्धा और विश्वास के साथ संपन्न किया जाए, और ' + name +
       ' जी के जीवन की समस्त बाधाएँ दूर हों। ईश्वर की कृपा बनी रहे।',
   ];
   pooja.jaapMantras.forEach(function (m) { continuousParts.push(m); });
-  continuousParts.push('अब हम हवन कुंड में अग्नि प्रज्वलित कर आहुति अर्पित करते हैं।');
+  continuousParts.push('अब हम हवन कुंड में अग्नि प्रज्वलित कर, एक-एक कर आहुति अर्पित करते हैं...');
   pooja.havanMantras.forEach(function (m) { continuousParts.push(m + '। इदं पितृभ्यः, न मम।'); });
+  // Anam's talk() has no rate/speed parameter — the ElevenLabs voice speed
+  // is a persona-level setting in Anam Lab, not something this API call can
+  // set. The ellipses/commas above are the only lever available from code:
+  // most TTS engines (including ElevenLabs) read them as pause cues, which
+  // slows the perceived cadence without changing the words. For an actual
+  // slower base rate, lower the voice's speed/stability setting on the
+  // ANAM_PERSONA_ID persona in the Anam Lab dashboard.
   flow.push(speech(continuousParts.join(' ')));
 
   // The one and only moment the devotee chants aloud, in between the
   // narrated portion and the closing — not at the very start or end.
   flow.push(speech(pooja.chantIntro));
-  flow.push(mantra(pooja.jaapMantras[0], 'Chant along'));
+  flow.push(mantra(pooja.jaapMantras[0], 'मंत्र बोलें'));
 
   flow.push(speech(
     'आपकी ' + pooja.poojaLabel + ' सम्पन्न हुई। ॐ शांति शांति शांति। ईश्वर की कृपा सदा आप और ' +
