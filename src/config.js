@@ -87,7 +87,7 @@ export const POOJAS = [
     // minute upcharan instead of a ~1-minute pass.
     jaapMantras: [
       'ओम् गं गणपतये नमः',
-      'अब हम भगवान गणेश का स्मरण कर, क्रम से नवग्रह देवताओं का ध्यान और आवाहन करते हैं...',
+      'अब हम भगवान गणेश का स्मरण कर, क्रम से नवग्रह देवताओं का ध्यान और आवाहन करते हैं।',
       'सूर्य देव के निमित्त — ॐ हरिं ॐ सूर्याय नमः।',
       'चन्द्र देव के निमित्त — ॐ श्रां श्रीं श्रौं सः चन्द्रमसे नमः।',
       'मंगल देव के निमित्त — ॐ अं अंगारकाय नमः।',
@@ -127,7 +127,7 @@ export const POOJAS = [
     // benediction — stretching this to a proper 2-3 minute upcharan.
     jaapMantras: [
       'ओम् गं गणपतये नमः',
-      'अब हम भगवान गणेश का स्मरण कर, बुरी नज़र और नकारात्मक ऊर्जा के निवारण हेतु रक्षक देवी-देवताओं का ध्यान और आवाहन करते हैं...',
+      'अब हम भगवान गणेश का स्मरण कर, बुरी नज़र और नकारात्मक ऊर्जा के निवारण हेतु रक्षक देवी-देवताओं का ध्यान और आवाहन करते हैं।',
       'भगवान शिव के निमित्त — ओम् नमो भगवते रुद्राय नमः।',
       'माँ दुर्गा के निमित्त — ओम् दुं दुर्गायै नमः।',
       'हनुमान जी के निमित्त — ओम् हं हनुमते नमः।',
@@ -164,7 +164,7 @@ export const POOJAS = [
     // benediction — stretching this to a proper 2-3 minute upcharan.
     jaapMantras: [
       'ओम् गं गणपतये नमः',
-      'अब हम भगवान गणेश का स्मरण कर, प्रेम, सामंजस्य और मिलन के देवी-देवताओं का ध्यान और आवाहन करते हैं...',
+      'अब हम भगवान गणेश का स्मरण कर, प्रेम, सामंजस्य और मिलन के देवी-देवताओं का ध्यान और आवाहन करते हैं।',
       'कामदेव के निमित्त — ओम् कामदेवाय विद्महे पुष्पबाणाय धीमहि। तन्नो अनंगः प्रचोदयात्।',
       'रति देवी के निमित्त — ओम् रत्यै नमः।',
       'भगवान शिव-पार्वती के निमित्त — ओम् पार्वती पतये नमः।',
@@ -248,20 +248,20 @@ export function buildFlow(pooja, devotee) {
   // instead of several chained ones, so it plays start to finish the way a
   // real Hindi pooja does, with no pause or UI interruption partway through.
   var continuousParts = [
-    'ॐ... समस्त देवी-देवताओं का आवाहन करते हुए, अद्य ' + gotra + ' में जन्मे ' + name +
+    'ॐ, समस्त देवी-देवताओं का आवाहन करते हुए, अद्य ' + gotra + ' में जन्मे ' + name +
       ' जी के निमित्त यह संकल्प लिया जाता है, कि ' + pooja.poojaLabel +
-      ' का अनुष्ठान... श्रद्धा और विश्वास के साथ संपन्न किया जाए, और ' + name +
+      ' का अनुष्ठान श्रद्धा और विश्वास के साथ संपन्न किया जाए, और ' + name +
       ' जी के जीवन की समस्त बाधाएँ दूर हों। ईश्वर की कृपा बनी रहे।',
   ];
   pooja.jaapMantras.forEach(function (m) { continuousParts.push(m); });
-  continuousParts.push('अब हम हवन कुंड में अग्नि प्रज्वलित कर, एक-एक कर आहुति अर्पित करते हैं...');
+  continuousParts.push('अब हम हवन कुंड में अग्नि प्रज्वलित कर, एक-एक कर आहुति अर्पित करते हैं।');
   pooja.havanMantras.forEach(function (m) { continuousParts.push(m + '। इदं पितृभ्यः, न मम।'); });
   // Anam's talk() has no rate/speed parameter — the ElevenLabs voice speed
   // is a persona-level setting in Anam Lab, not something this API call can
-  // set. The ellipses/commas above are the only lever available from code:
-  // most TTS engines (including ElevenLabs) read them as pause cues, which
-  // slows the perceived cadence without changing the words. For an actual
-  // slower base rate, lower the voice's speed/stability setting on the
+  // set. Ellipses were tried as a pause cue but made the cadence drag
+  // (reported as "very slow"), so script text now sticks to plain
+  // commas/dandas only. For an actual slower or faster base rate, adjust the
+  // voice's speed/stability setting on the
   // ANAM_PERSONA_ID persona in the Anam Lab dashboard.
   flow.push(speech(continuousParts.join(' ')));
 

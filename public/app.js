@@ -414,12 +414,14 @@
     return parts.length ? parts : [text];
   }
 
-  // ~9 Hindi characters/second is a generous estimate for the slow, clear
-  // pace this persona is set to — better to leave a beat of silence than
-  // cut a word off. A fixed floor + tail buffer covers very short lines.
+  // ~14 Hindi characters/second matches a normal spoken pace. The earlier
+  // 9 chars/sec estimate was overly conservative — it left an audible gap
+  // of dead air after most sentences finished playing, which is what made
+  // the whole call feel sluggish. A small floor + tail buffer still covers
+  // very short lines without cutting into the next talk() call too early.
   function estimateSpeechMs(text) {
     var len = String(text || '').length;
-    return Math.max(1100, Math.round((len / 9) * 1000) + 350);
+    return Math.max(700, Math.round((len / 14) * 1000) + 150);
   }
 
   function speakSegmentText(text, onAllDone) {
