@@ -20,7 +20,9 @@
     ritualFlow: [],
     ritualIdx: -1,
     currentSegment: null,
-    awaitingSegmentSpeech: false,
+    onSpeechChunkDone: null,
+    flowStarted: false,
+    callStartedAt: 0,
     currentMantraTarget: '',
     mantraAttempts: 0,
     endScheduled: false,
@@ -294,27 +296,52 @@
       el('callAstroName').textContent = PANDIT.nameHi || PANDIT.name || '';
     }
     hideActionBar();
+    session.flowStarted = false;
+    session.callStartedAt = Date.now();
     setCallStatus('आपके पंडित जी से जोड़ रहे हैं…');
     if (data.mock) return mockCall(data.flow);
     realCall(data.sessionToken, data.flow);
   }
 
+  // The video never appears the instant a connection exists — the devotee
+  // should always see at least a brief, deliberate "connecting" beat, then a
+  // short "connected" transition, rather than the astro's face just cutting
+  // in. CALL_LOADER_MIN_MS is a floor: on a fast connection we still wait
+  // out the rest of it; on a slow one we've already waited longer, so there's
+  // nothing extra to add.
+  var CALL_LOADER_MIN_MS = 3000;
+  function revealCall(onReady) {
+    var remaining = CALL_LOADER_MIN_MS - (Date.now() - session.callStartedAt);
+    setTimeout(function () {
+      el('callSpinner').classList.add('hidden');
+      el('connectedTick').classList.remove('hidden');
+      el('callStatus').textContent = 'पूजा प्रारंभ हो रही है';
+      setTimeout(function () {
+        el('callOverlay').classList.add('fadingOut');
+        setTimeout(function () {
+          el('callOverlay').classList.add('hidden');
+          el('callOverlay').classList.remove('fadingOut');
+          el('callSpinner').classList.remove('hidden');
+          el('connectedTick').classList.add('hidden');
+          onReady();
+        }, 400);
+      }, 500);
+    }, Math.max(0, remaining));
+  }
+
   // Simulated call screen used while ANAM_API_KEY is not yet configured.
   function mockCall(ritualFlow) {
     el('mockAvatar').classList.remove('hidden');
-    setTimeout(function () {
-      setCallStatus('');
-      // Drive the same segment player against a stub client so the mantra/
-      // action cards can still be clicked through without a real Anam call.
-      var stubClient = {
-        talk: function (text) {
-          setTimeout(function () { onSegmentSpoken(); }, Math.min(2500, 600 + text.length * 18));
-        },
-        stopStreaming: function () {},
-      };
-      session.anamClient = stubClient;
-      playFlow(ritualFlow);
-    }, 1200);
+    // Drive the same segment player against a stub client so the mantra/
+    // action cards can still be clicked through without a real Anam call.
+    var stubClient = {
+      talk: function (text) {
+        setTimeout(function () { onSpeechChunkSpoken(); }, Math.min(900, 200 + text.length * 12));
+      },
+      stopStreaming: function () {},
+    };
+    session.anamClient = stubClient;
+    revealCall(function () { playFlow(ritualFlow); });
   }
 
   function realCall(sessionToken, ritualFlow) {
@@ -325,21 +352,32 @@
         // from our own buttons instead.
         var client = mod.createClient(sessionToken, { disableInputAudio: true });
         session.anamClient = client;
+        // WebRTC connections re-fire CONNECTION_ESTABLISHED on reconnects
+        // (an ICE restart after a brief network hiccup, for instance) — and
+        // an idle stretch waiting on the devotee's mic is exactly when
+        // that's most likely to happen unnoticed. Without this guard, every
+        // reconnect called playFlow() again, which resets ritualIdx to -1
+        // and restarts the whole pooja from the greeting — this is what was
+        // behind the "restarts from the start" bug. The ritual may only
+        // ever be started once per call.
         client.addListener(mod.AnamEvent.CONNECTION_ESTABLISHED, function () {
-          setCallStatus('');
-          playFlow(ritualFlow);
+          if (session.flowStarted) return;
+          session.flowStarted = true;
+          revealCall(function () { playFlow(ritualFlow); });
         });
         client.addListener(mod.AnamEvent.CONNECTION_CLOSED, function () {
           endCall();
         });
-        // Fires once the persona finishes speaking each utterance — the
-        // signal the segment player waits on before advancing/showing a
-        // button, since talk() speaks exact text with no LLM in the loop.
+        // Fires once per spoken utterance — NOT once per talk() call. A
+        // talk() with several sentences in it can log each sentence to
+        // message history as its own entry while still mid-utterance, so
+        // this is wired to advance the per-sentence speech queue (see
+        // speakSegmentText), not to mark a whole segment as spoken.
         if (mod.AnamEvent.MESSAGE_HISTORY_UPDATED) {
           client.addListener(mod.AnamEvent.MESSAGE_HISTORY_UPDATED, function (messages) {
             if ((messages || []).length > session.processedMsgCount) {
               session.processedMsgCount = messages.length;
-              onSegmentSpoken();
+              onSpeechChunkSpoken();
             }
           });
         }
@@ -374,20 +412,55 @@
       return;
     }
     session.currentSegment = seg;
-    session.awaitingSegmentSpeech = true;
-    if (session.anamClient && typeof session.anamClient.talk === 'function') {
-      session.anamClient.talk(seg.text);
-    } else {
-      onSegmentSpoken();
-    }
+    speakSegmentText(seg.text, function () { onSegmentFullySpoken(seg); });
   }
 
-  // Called once the persona finishes speaking the current segment.
-  function onSegmentSpoken() {
-    if (!session.awaitingSegmentSpeech) return;
-    session.awaitingSegmentSpeech = false;
-    var seg = session.currentSegment;
-    if (!seg) return;
+  // Every segment used to go out as ONE talk() call for its whole text —
+  // often several sentences. MESSAGE_HISTORY_UPDATED fires per spoken
+  // utterance, not once per talk() call, so on a multi-sentence segment it
+  // could fire after only the first sentence logged, well before the rest
+  // had actually finished playing. We'd treat that as "segment spoken" and
+  // immediately send the NEXT segment's talk() — which interrupted the
+  // still-playing audio and clipped its tail. That's what was cutting the
+  // last clause off several lines in testing.
+  //
+  // Splitting on '।' (the Hindi sentence-ending danda) and speaking one
+  // sentence per talk() call, waiting for its own completion signal before
+  // sending the next, removes the race entirely: we never call talk() again
+  // until the previous sentence is confirmed done.
+  var SENTENCE_SPLIT = /(?<=।)\s*/;
+  function splitIntoSentences(text) {
+    var parts = String(text || '').split(SENTENCE_SPLIT).map(function (s) { return s.trim(); }).filter(Boolean);
+    return parts.length ? parts : [text];
+  }
+
+  function speakSegmentText(text, onAllDone) {
+    var queue = splitIntoSentences(text);
+    function speakNext() {
+      if (!queue.length) { session.onSpeechChunkDone = null; onAllDone(); return; }
+      var line = queue.shift();
+      session.onSpeechChunkDone = speakNext;
+      if (session.anamClient && typeof session.anamClient.talk === 'function') {
+        session.anamClient.talk(line);
+      } else {
+        speakNext();
+      }
+    }
+    speakNext();
+  }
+
+  // Called once the persona finishes speaking the current SENTENCE (not the
+  // whole segment) — just advances whatever speakSegmentText queued next.
+  function onSpeechChunkSpoken() {
+    var fn = session.onSpeechChunkDone;
+    if (!fn) return;
+    session.onSpeechChunkDone = null;
+    fn();
+  }
+
+  // Called once every sentence in the current segment has been spoken.
+  function onSegmentFullySpoken(seg) {
+    if (session.currentSegment !== seg) return; // superseded by a later segment
     if (seg.type === 'speech') {
       advanceFlow();
     } else if (seg.type === 'mantra') {
@@ -562,13 +635,12 @@
   // stuck retrying a mantra recognition never confirms.
   //
   // Also has the persona speak a short retry line here rather than staying
-  // silent. Leaving the avatar fully idle while we wait on mic input is
-  // what let Anam's own conversational engine take over and restart from
-  // its default greeting after a couple of silent tries — our script must
-  // stay in control of every utterance, so we never leave a real gap for
-  // that to happen. onSegmentSpoken() no-ops for this since
-  // awaitingSegmentSpeech is false while waiting on a chant, so it can't
-  // interfere with ritual-flow advancement.
+  // silent, as a secondary safety net — kept as a fire-and-forget talk()
+  // call outside the sentence queue, which is safe since
+  // session.onSpeechChunkDone is always null while waiting on a chant (see
+  // realCall's CONNECTION_ESTABLISHED guard for the actual fix to the
+  // "restarts from the start" bug: a WebRTC reconnect during this idle
+  // wait was re-running playFlow() from scratch, not this silence).
   function markMantraAttemptFailed(msg) {
     setDockStatus(msg);
     el('mantraBtn').disabled = false;
@@ -683,7 +755,8 @@
     session.ritualFlow = [];
     session.ritualIdx = -1;
     session.currentSegment = null;
-    session.awaitingSegmentSpeech = false;
+    session.onSpeechChunkDone = null;
+    session.flowStarted = false;
     session.currentMantraTarget = '';
     session.mantraAttempts = 0;
     session.endScheduled = false;

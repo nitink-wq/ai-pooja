@@ -252,10 +252,14 @@ button:active:not([disabled]), .poojaCard:active { transform: scale(.96); }
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
   background: radial-gradient(80% 60% at 50% 40%, rgba(60, 34, 16, .55) 0%, rgba(20, 16, 12, .82) 100%);
   color: #FFF3E4; text-align: center; padding: 24px; z-index: 9;
+  transition: opacity .4s ease;
 }
+.callOverlay.fadingOut { opacity: 0; }
 .callOverlay p { font-size: 15px; font-weight: 600; }
 .spinner { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(255, 191, 110, .3); border-top-color: var(--gold); animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+/* the brief "connected" beat between the spinner and the video appearing */
+.connectedTick { width: 44px; height: 44px; animation: doneMarkPop .5s cubic-bezier(.34, 1.56, .64, 1) both; }
 
 /* who you're with, floated over the top of the video */
 .callChrome {
