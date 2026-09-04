@@ -208,10 +208,16 @@ function action(text, opts) {
 // personal details recited back is unsettling, and someone may well be
 // within earshot.
 //
+// The astro's name is always "पंडित नितिन" — written in Devanagari, not
+// Latin script, so it never breaks the flow of otherwise-Hindi speech.
+var PANDIT_NAME = 'पंडित नितिन';
+
 // Shape of the ritual (per user direction, not just an AI-disclosure demo):
-//  1. a short warm greeting straight into the pooja — no self-introduction
-//     ("I am Pandit Nitin" / "I am an avatar"), just the greeting and
-//     straight into doing the pooja
+//  1. a short warm greeting WITH a name introduction ("मैं पंडित नितिन
+//     हूँ") — a real pandit introduces himself, so this line stays. What
+//     it must never do is say or imply anything about being an AI/avatar/
+//     not a "real" pandit — that's enforced in ANAM_SYSTEM_PROMPT's
+//     guardrails, not by omitting the intro.
 //  2. light the diya (a tap on screen, not a real lamp)
 //  3. one continuous ~2-3 minute block of sankalp + mantras + havan, spoken
 //     a single segment so there's no pause/break partway through it
@@ -226,8 +232,8 @@ export function buildFlow(pooja, devotee) {
   var flow = [];
 
   flow.push(speech(
-    'नमस्ते ' + name + ' जी। आज हम साथ मिलकर ' + pooja.poojaLabel +
-    ' पूर्ण श्रद्धा और विधि-विधान से सम्पन्न करेंगे। कृपया हाथ जोड़कर, ' +
+    'नमस्ते ' + name + ' जी। मैं ' + PANDIT_NAME + ' हूँ। आज मैं आपके साथ मिलकर ' +
+    pooja.poojaLabel + ' पूर्ण श्रद्धा और विधि-विधान से सम्पन्न करूँगा। कृपया हाथ जोड़कर, ' +
     'शांत मन से मेरे साथ जुड़ें।'
   ));
 
