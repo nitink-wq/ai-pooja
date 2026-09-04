@@ -586,10 +586,10 @@
   }
 
   // The devotee's chant is never actually checked — we trust that tapping
-  // the mic means they chanted along. A short "listening" delay before
-  // accepting keeps the beat of the astro having heard them, rather than
-  // confirming the instant they tap.
-  var MANTRA_LISTEN_MS = 1000;
+  // the mic means they chanted along. A 1-2s "listening" pause before the
+  // astro's next line starts keeps the beat of having actually heard them,
+  // rather than the audio cutting in the instant they tap.
+  var MANTRA_LISTEN_MS = 1600;
   function startMantraRecognition() {
     el('mantraBtn').disabled = true;
     el('mantraBtn').classList.add('listening');
