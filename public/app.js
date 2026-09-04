@@ -414,14 +414,20 @@
     return parts.length ? parts : [text];
   }
 
-  // ~14 Hindi characters/second matches a normal spoken pace. The earlier
-  // 9 chars/sec estimate was overly conservative — it left an audible gap
-  // of dead air after most sentences finished playing, which is what made
-  // the whole call feel sluggish. A small floor + tail buffer still covers
-  // very short lines without cutting into the next talk() call too early.
+  // ~11 Hindi characters/second matches a normal spoken pace. The buffer
+  // scales WITH length rather than being a fixed add-on: a flat buffer was
+  // either too small for long sentences (a single mis-estimated 80+ char
+  // sentence can clip several words off the end — this is exactly what
+  // dropped "और विधि-विधान से सम्पन्न करूँगा" off the greeting when the
+  // rate was pushed to 14 chars/sec with only a 150ms buffer) or, sized
+  // large enough to be safe for those, left needless dead air after every
+  // short mantra line. Scaling the buffer with length gives short lines a
+  // small, snappy buffer and long ones a proportionally larger safety
+  // margin, where estimation error is more likely to compound.
   function estimateSpeechMs(text) {
     var len = String(text || '').length;
-    return Math.max(700, Math.round((len / 14) * 1000) + 150);
+    var buffer = Math.max(250, len * 20);
+    return Math.max(700, Math.round((len / 11) * 1000) + buffer);
   }
 
   function speakSegmentText(text, onAllDone) {
