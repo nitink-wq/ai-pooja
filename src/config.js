@@ -68,6 +68,7 @@ export const POOJAS = [
     id: 'navgraha-shanti',
     name: 'Navgraha Shanti Pooja',
     description: 'Pacify the nine planetary forces and clear the obstacles they are casting on your life.',
+    image: 'pooja-navgraha-shanti.jpg',
     priceInr: 299,
     durationMin: 5,
     includes: [
@@ -148,6 +149,7 @@ export const POOJAS = [
     id: 'prem-milan',
     name: 'Prem Milan Pooja',
     description: 'Invoke divine blessings to resolve conflicts and bring harmony into your relationship.',
+    image: 'pooja-prem-milan.jpg',
     priceInr: 249,
     durationMin: 5,
     includes: [

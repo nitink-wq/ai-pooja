@@ -63,8 +63,8 @@ function verifyPayToken(token, poojaId) {
 // flow, once a call actually starts.
 app.get('/api/poojas', (req, res) => {
   res.json({
-    poojas: POOJAS.map(({ id, name, description, priceInr, durationMin, includes }) => ({
-      id, name, description, priceInr, durationMin, includes,
+    poojas: POOJAS.map(({ id, name, description, image, priceInr, durationMin, includes }) => ({
+      id, name, description, image, priceInr, durationMin, includes,
     })),
     pandit: PANDIT,
   });

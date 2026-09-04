@@ -75,8 +75,11 @@
       card.className = 'poojaCard';
       card.style.setProperty('--i', idx);
       card.type = 'button';
+      var iconHtml = p.image
+        ? '<img class="pIcon pIconPhoto" src="' + escapeHtml(p.image) + '" alt="" width="44" height="44">'
+        : '<div class="pIcon">' + FLAME_ICON + '</div>';
       card.innerHTML =
-        '<div class="pIcon">' + FLAME_ICON + '</div>' +
+        iconHtml +
         '<h3>' + escapeHtml(p.name) + '</h3>' +
         '<p>' + escapeHtml(p.description) + '</p>' +
         '<div class="priceRow">' +
