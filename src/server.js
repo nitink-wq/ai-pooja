@@ -164,9 +164,17 @@ app.post('/api/payment/callback', (req, res) => {
   const orderToken = req.query.ot;
   const order = readOrderToken(orderToken);
   const back = (params) => res.redirect(303, '/?' + new URLSearchParams(params).toString());
+  const b = req.body || {};
+  // Operational only — booleans and Razorpay ids, never devotee details. This
+  // is how to tell "Razorpay never called back" apart from "callback failed".
+  console.log('[payment/callback]', JSON.stringify({
+    hasOrderToken: !!orderToken, orderTokenValid: !!order,
+    razorpayOrderId: b.razorpay_order_id || null, hasPaymentId: !!b.razorpay_payment_id,
+    hasSignature: !!b.razorpay_signature, errorCode: (b.error && b.error.code) || b['error[code]'] || null,
+    ua: (req.get('user-agent') || '').slice(0, 80),
+  }));
   if (!order) return back({ payFailed: 'expired' });
 
-  const b = req.body || {};
   const settled = settlePayment({
     orderToken,
     orderId: b.razorpay_order_id,
@@ -175,6 +183,7 @@ app.post('/api/payment/callback', (req, res) => {
   });
   // On failure Razorpay posts error[...] fields and no payment id; either way,
   // no valid signature means no token.
+  console.log('[payment/callback] outcome:', settled ? 'paid' : 'failed', 'pooja=' + order.poojaId);
   if (!settled) return back({ payFailed: '1', pooja: order.poojaId });
   return back({ paid: settled.payToken, pooja: settled.poojaId });
 });

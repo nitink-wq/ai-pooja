@@ -190,10 +190,18 @@
   // (see resumeFromPaymentRedirect). Desktop keeps the in-page modal, which
   // works and stays on the page.
   function shouldUseRedirectCheckout() {
+    // ?payRedirect=1 forces the mobile path on a desktop browser, so the full
+    // bank round trip can be QA'd without a phone. ?payRedirect=0 forces the
+    // modal, to compare.
+    var forced = new URLSearchParams(location.search).get('payRedirect');
+    if (forced === '1') return true;
+    if (forced === '0') return false;
     var ua = navigator.userAgent || '';
     if (/Android|iPhone|iPad|iPod|Mobile|; wv\)/i.test(ua)) return true;
-    // iPadOS reports a desktop UA; only touch gives it away.
-    return navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1;
+    // Any touch device, or a phone-sized viewport — catches "Request desktop
+    // site", where the UA lies but the popup problem is the same.
+    if ((navigator.maxTouchPoints || 0) > 0) return true;
+    return window.innerWidth < 900;
   }
 
   function realPayment(order) {
