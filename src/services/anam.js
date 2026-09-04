@@ -6,7 +6,12 @@
 //                          client — only the short-lived session token it
 //                          mints is.
 //   ANAM_PERSONA_ID     - the persona built in Anam Lab (bundles its
-//                          avatar and voice).
+//                          avatar and voice). Its system prompt is pushed
+//                          separately — see scripts/set-anam-system-prompt.js
+//                          and src/config.js ANAM_SYSTEM_PROMPT — since the
+//                          session-token call below runs the persona in
+//                          stateful mode (personaId only), which Anam's API
+//                          cannot combine with an inline systemPrompt.
 //   ANAM_VOICE_ID        - informational only: the ElevenLabs voice this
 //   ANAM_VOICE_MODEL_ID    persona uses, already configured on the persona
 //                          itself in Anam Lab. Not sent in the API call.
