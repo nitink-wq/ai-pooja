@@ -76,12 +76,16 @@
       card.style.setProperty('--i', idx);
       card.type = 'button';
       var iconHtml = p.image
-        ? '<img class="pIcon pIconPhoto" src="' + escapeHtml(p.image) + '" alt="" width="44" height="44">'
+        ? '<img class="pIcon pIconPhoto" src="' + escapeHtml(p.image) + '" alt="" width="64" height="64">'
         : '<div class="pIcon">' + FLAME_ICON + '</div>';
       card.innerHTML =
-        iconHtml +
-        '<h3>' + escapeHtml(p.name) + '</h3>' +
-        '<p>' + escapeHtml(p.description) + '</p>' +
+        '<div class="pHead">' +
+          iconHtml +
+          '<div class="pHeadText">' +
+            '<h3>' + escapeHtml(p.name) + '</h3>' +
+            '<p>' + escapeHtml(p.description) + '</p>' +
+          '</div>' +
+        '</div>' +
         '<div class="priceRow">' +
           '<span class="price">₹' + p.priceInr + '</span>' +
           '<span class="selectPill">Select →</span>' +
