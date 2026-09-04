@@ -14,6 +14,7 @@
   var session = {
     pooja: null,
     orderId: null,
+    orderToken: null,
     payToken: null,
     anamClient: null,
     ritualFlow: [],
@@ -161,6 +162,7 @@
       .then(function (r) { if (!r.ok) throw new Error('order'); return r.json(); })
       .then(function (order) {
         session.orderId = order.orderId;
+        session.orderToken = order.orderToken;
         if (order.mock) return mockPayment(order);
         return realPayment(order);
       })
@@ -178,10 +180,26 @@
     }, 900);
   }
 
+  // Checkout.js opens netbanking — and Razorpay's test-mode bank page with
+  // its Success / Failure buttons — in a popup window from inside its iframe.
+  // Desktop browsers allow that; mobile browsers and WebViews block it or have
+  // nowhere to host it, so the bank page never appears and the payment just
+  // hangs. Razorpay's answer for mobile is redirect mode: the top-level page
+  // navigates to the bank, and on completion Razorpay POSTs the result to our
+  // callback_url, which drops the browser back into the app with a payToken
+  // (see resumeFromPaymentRedirect). Desktop keeps the in-page modal, which
+  // works and stays on the page.
+  function shouldUseRedirectCheckout() {
+    var ua = navigator.userAgent || '';
+    if (/Android|iPhone|iPad|iPod|Mobile|; wv\)/i.test(ua)) return true;
+    // iPadOS reports a desktop UA; only touch gives it away.
+    return navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1;
+  }
+
   function realPayment(order) {
     loadRazorpayScript()
       .then(function () {
-        var rz = new window.Razorpay({
+        var options = {
           key: order.keyId,
           amount: order.amount,
           currency: order.currency,
@@ -198,7 +216,15 @@
               el('payBtn').textContent = PAY_CTA_LABEL;
             },
           },
-        });
+        };
+        if (shouldUseRedirectCheckout()) {
+          options.redirect = true;
+          // Absolute, as Razorpay requires. The order token carries the pooja
+          // across the round trip; the server rejects a callback without it.
+          options.callback_url = location.origin + '/api/payment/callback?ot=' +
+            encodeURIComponent(session.orderToken);
+        }
+        var rz = new window.Razorpay(options);
         rz.on('payment.failed', function () {
           showPayError('Payment failed. You have not been charged — please try again.');
         });
@@ -213,7 +239,7 @@
     fetch('/api/payment/verify', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ poojaId: session.pooja.id, orderId: orderId, paymentId: paymentId, signature: signature }),
+      body: JSON.stringify({ orderToken: session.orderToken, orderId: orderId, paymentId: paymentId, signature: signature }),
     })
       .then(function (r) { if (!r.ok) throw new Error('verify'); return r.json(); })
       .then(function (data) {
@@ -641,6 +667,35 @@
 
   var FLAME_ICON = '<svg viewBox="0 0 24 24" fill="none"><path d="M12 2c1 3-3 4-3 8a3 3 0 006 0c0-1-.5-2-1-2.5.8.2 3 1.8 3 5.5a5 5 0 01-10 0c0-5 3-7 5-11z" fill="#fff"/></svg>';
 
+  // After a redirect-mode payment the browser lands back on / with the result
+  // in the query string (set by /api/payment/callback), and nothing of the
+  // original page's state. Rebuild just enough to continue: the selected
+  // pooja from the catalogue, the payToken, and the payment -> form screen
+  // stack so the back button still makes sense. The query is then scrubbed so
+  // a reload or a shared link cannot replay it.
+  function resumeFromPaymentRedirect() {
+    var q = new URLSearchParams(location.search);
+    if (!q.has('paid') && !q.has('payFailed')) return false;
+    history.replaceState(null, '', location.pathname);
+
+    var pooja = POOJAS.filter(function (p) { return p.id === q.get('pooja'); })[0];
+    if (q.has('paid') && pooja) {
+      selectPooja(pooja);
+      session.payToken = q.get('paid');
+      resetForm();
+      goTo('form');
+      return true;
+    }
+    if (pooja) {
+      selectPooja(pooja);
+      showPayError(q.get('payFailed') === 'expired'
+        ? 'This payment session expired. Please start again.'
+        : 'Payment failed. You have not been charged — please try again.');
+      return true;
+    }
+    return false;
+  }
+
   // ---- boot -----------------------------------------------------------------
   buildDiyaRise();
   Promise.all([
@@ -651,6 +706,7 @@
     PANDIT = results[0].pandit || null;
     MODE = results[1];
     renderPoojas();
+    resumeFromPaymentRedirect();
   }).catch(function () {
     el('poojaList').innerHTML = '<p class="errText">Could not load poojas. Please refresh.</p>';
   });

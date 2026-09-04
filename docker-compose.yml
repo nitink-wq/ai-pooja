@@ -9,10 +9,9 @@ services:
       # mock mode. Set them (or use a mounted .env) to test the real thing:
       # RAZORPAY_KEY_ID: rzp_test_xxxxxxxxxxxx
       # RAZORPAY_KEY_SECRET: replace-me
+      # PAY_TOKEN_SECRET: replace-me   # only needed with >1 replica
       # ANAM_API_KEY: replace-me
-      # ANAM_AVATAR_ID: replace-me
-      # ANAM_VOICE_ID: replace-me
-      # ANAM_LLM_ID: replace-me
+      # ANAM_PERSONA_ID: replace-me
     ports:
       - "3000:3000"
     healthcheck:
