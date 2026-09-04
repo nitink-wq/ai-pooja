@@ -16,15 +16,11 @@
     orderId: null,
     payToken: null,
     anamClient: null,
-    processedMsgCount: 0,
     ritualFlow: [],
     ritualIdx: -1,
     currentSegment: null,
-    onSpeechChunkDone: null,
     flowStarted: false,
     callStartedAt: 0,
-    currentMantraTarget: '',
-    mantraAttempts: 0,
     endScheduled: false,
   };
 
@@ -277,7 +273,7 @@
       .catch(function () {
         el('startCallBtn').disabled = false;
         el('startCallBtn').textContent = 'Begin live pooja';
-        alert('आपके पंडित जी से संपर्क नहीं हो सका। कृपया पुनः प्रयास करें।');
+        alert('Could not connect to your astro. Please try again.');
       });
   });
 
@@ -293,12 +289,12 @@
     // name the astro on the call itself, not just on the pay screen
     if (PANDIT) {
       el('callAstroPhoto').src = PANDIT.photo || 'pandit.jpg';
-      el('callAstroName').textContent = PANDIT.nameHi || PANDIT.name || '';
+      el('callAstroName').textContent = PANDIT.name || '';
     }
     hideActionBar();
     session.flowStarted = false;
     session.callStartedAt = Date.now();
-    setCallStatus('आपके पंडित जी से जोड़ रहे हैं…');
+    setCallStatus('Connecting to your astro…');
     if (data.mock) return mockCall(data.flow);
     realCall(data.sessionToken, data.flow);
   }
@@ -315,7 +311,7 @@
     setTimeout(function () {
       el('callSpinner').classList.add('hidden');
       el('connectedTick').classList.remove('hidden');
-      el('callStatus').textContent = 'पूजा प्रारंभ हो रही है';
+      el('callStatus').textContent = 'Pooja starting';
       setTimeout(function () {
         el('callOverlay').classList.add('fadingOut');
         setTimeout(function () {
@@ -335,9 +331,7 @@
     // Drive the same segment player against a stub client so the mantra/
     // action cards can still be clicked through without a real Anam call.
     var stubClient = {
-      talk: function (text) {
-        setTimeout(function () { onSpeechChunkSpoken(); }, Math.min(900, 200 + text.length * 12));
-      },
+      talk: function () {},
       stopStreaming: function () {},
     };
     session.anamClient = stubClient;
@@ -368,19 +362,6 @@
         client.addListener(mod.AnamEvent.CONNECTION_CLOSED, function () {
           endCall();
         });
-        // Fires once per spoken utterance — NOT once per talk() call. A
-        // talk() with several sentences in it can log each sentence to
-        // message history as its own entry while still mid-utterance, so
-        // this is wired to advance the per-sentence speech queue (see
-        // speakSegmentText), not to mark a whole segment as spoken.
-        if (mod.AnamEvent.MESSAGE_HISTORY_UPDATED) {
-          client.addListener(mod.AnamEvent.MESSAGE_HISTORY_UPDATED, function (messages) {
-            if ((messages || []).length > session.processedMsgCount) {
-              session.processedMsgCount = messages.length;
-              onSpeechChunkSpoken();
-            }
-          });
-        }
         return client.streamToVideoElement('personaVideo');
       })
       .catch(function () {
@@ -415,47 +396,43 @@
     speakSegmentText(seg.text, function () { onSegmentFullySpoken(seg); });
   }
 
-  // Every segment used to go out as ONE talk() call for its whole text —
-  // often several sentences. MESSAGE_HISTORY_UPDATED fires per spoken
-  // utterance, not once per talk() call, so on a multi-sentence segment it
-  // could fire after only the first sentence logged, well before the rest
-  // had actually finished playing. We'd treat that as "segment spoken" and
-  // immediately send the NEXT segment's talk() — which interrupted the
-  // still-playing audio and clipped its tail. That's what was cutting the
-  // last clause off several lines in testing.
+  // Every segment used to go out as ONE talk() call for its whole text, and
+  // we used to advance on Anam's MESSAGE_HISTORY_UPDATED event. That event
+  // fires as soon as a sentence is logged to history — which turned out to
+  // be well BEFORE its audio actually finished playing — so we were sending
+  // the next sentence's talk() while the previous one was still mid-word,
+  // clipping its tail. That's what was cutting clauses like "...सम्पन्न
+  // करूँगा" off in testing.
   //
-  // Splitting on '।' (the Hindi sentence-ending danda) and speaking one
-  // sentence per talk() call, waiting for its own completion signal before
-  // sending the next, removes the race entirely: we never call talk() again
-  // until the previous sentence is confirmed done.
+  // Fix: split on '।' (the Hindi sentence-ending danda) and pace by an
+  // estimated speaking duration for each sentence instead of trusting that
+  // event. We only ever call talk() again once our own timer says the
+  // previous sentence should be fully spoken.
   var SENTENCE_SPLIT = /(?<=।)\s*/;
   function splitIntoSentences(text) {
     var parts = String(text || '').split(SENTENCE_SPLIT).map(function (s) { return s.trim(); }).filter(Boolean);
     return parts.length ? parts : [text];
   }
 
+  // ~9 Hindi characters/second is a generous estimate for the slow, clear
+  // pace this persona is set to — better to leave a beat of silence than
+  // cut a word off. A fixed floor + tail buffer covers very short lines.
+  function estimateSpeechMs(text) {
+    var len = String(text || '').length;
+    return Math.max(1100, Math.round((len / 9) * 1000) + 350);
+  }
+
   function speakSegmentText(text, onAllDone) {
     var queue = splitIntoSentences(text);
     function speakNext() {
-      if (!queue.length) { session.onSpeechChunkDone = null; onAllDone(); return; }
+      if (!queue.length) { onAllDone(); return; }
       var line = queue.shift();
-      session.onSpeechChunkDone = speakNext;
       if (session.anamClient && typeof session.anamClient.talk === 'function') {
         session.anamClient.talk(line);
-      } else {
-        speakNext();
       }
+      setTimeout(speakNext, estimateSpeechMs(line));
     }
     speakNext();
-  }
-
-  // Called once the persona finishes speaking the current SENTENCE (not the
-  // whole segment) — just advances whatever speakSegmentText queued next.
-  function onSpeechChunkSpoken() {
-    var fn = session.onSpeechChunkDone;
-    if (!fn) return;
-    session.onSpeechChunkDone = null;
-    fn();
   }
 
   // Called once every sentence in the current segment has been spoken.
@@ -510,7 +487,6 @@
     setCaption('', '');
     setDockStatus('');
     show('diyaRise', false);
-    stopMantraRecognition();
   }
 
   // Every 'action' segment is completed by tapping on screen — the ritual
@@ -518,25 +494,22 @@
   // diya tap target is the only action UI there is. Its label is always
   // English even though the astro speaks Hindi.
   function showActionCard(seg) {
-    stopMantraRecognition();
     show('diyaRise', false);
     setSkipVisible(false);
     // no caption here — the button's own label already says it, and a
     // duplicate line over the video is just noise
     setCaption('', '');
-    setDockStatus('दीया जलाने हेतु स्पर्श करें');
-    setMainControl('diya', seg.uiLabel || 'दीया जलाएँ');
+    setDockStatus('Tap to light the diya');
+    setMainControl('diya', seg.uiLabel || 'Light the diya');
     el('diyaTapBtn').disabled = false;
   }
 
   function showMantraCard(seg) {
-    session.currentMantraTarget = seg.text;
-    session.mantraAttempts = 0;
     show('diyaRise', false);
-    setCaption('यह मंत्र बोलें', seg.text);
-    setMainControl('mic', seg.uiLabel || 'मंत्र बोलें');
+    setCaption('Repeat this mantra', seg.text);
+    setMainControl('mic', seg.uiLabel || 'Chant now');
     setSkipVisible(false);
-    setDockStatus('माइक दबाएँ और पंडित जी के साथ मंत्र बोलें');
+    setDockStatus('Press the mic and chant along with your astro');
     el('mantraBtn').disabled = false;
     el('mantraBtn').classList.remove('listening');
   }
@@ -583,7 +556,7 @@
     el('diyaTapBtn').disabled = true;
     setMainControl(null, '');
     setCaption('', '');
-    setDockStatus('दीया प्रज्वलित — पूजा प्रारंभ');
+    setDockStatus('Diya lit — pooja begins');
     el('diyaRise').classList.remove('hidden');
     setTimeout(function () {
       el('diyaRise').classList.add('hidden');
@@ -597,151 +570,22 @@
     advanceFlow();
   }
 
-  // Word-overlap (Sørensen–Dice) similarity, good enough for short mantras.
-  // Returns both the score and the raw match count — a short mantra like
-  // "ओम् गं गणपतये नमः" can hit score >= 0.5 off a single common word
-  // ("ओम्"/"नमः") match, so the caller also requires a minimum match count
-  // to avoid accepting near-silence or an unrelated utterance.
-  function normalizeWords(s) {
-    return String(s || '').replace(/[।॥.,!?]/g, ' ').trim().split(/\s+/).filter(Boolean);
-  }
-  function mantraSimilarity(said, target) {
-    var a = normalizeWords(said);
-    var targetWords = normalizeWords(target);
-    var b = targetWords.slice();
-    if (!a.length || !b.length) return { score: 0, matches: 0, targetWordCount: targetWords.length };
-    var matches = 0;
-    a.forEach(function (w) {
-      var idx = b.indexOf(w);
-      if (idx !== -1) { matches++; b.splice(idx, 1); }
-    });
-    return {
-      score: (2 * matches) / (a.length + targetWords.length),
-      matches: matches,
-      targetWordCount: targetWords.length,
-    };
-  }
-
-  var activeRecognition = null;
-  function stopMantraRecognition() {
-    if (activeRecognition) {
-      try { activeRecognition.abort(); } catch (e) { /* already stopped */ }
-      activeRecognition = null;
-    }
-  }
-
-  // Marks one failed/inconclusive chant attempt: resets the button and, from
-  // the first failure onward, reveals a skip button so the devotee is never
-  // stuck retrying a mantra recognition never confirms.
-  //
-  // Also has the persona speak a short retry line here rather than staying
-  // silent, as a secondary safety net — kept as a fire-and-forget talk()
-  // call outside the sentence queue, which is safe since
-  // session.onSpeechChunkDone is always null while waiting on a chant (see
-  // realCall's CONNECTION_ESTABLISHED guard for the actual fix to the
-  // "restarts from the start" bug: a WebRTC reconnect during this idle
-  // wait was re-running playFlow() from scratch, not this silence).
-  function markMantraAttemptFailed(msg) {
-    setDockStatus(msg);
-    el('mantraBtn').disabled = false;
-    el('mantraBtn').classList.remove('listening');
-    session.mantraAttempts += 1;
-    if (session.mantraAttempts >= 1) {
-      setSkipVisible(true);
-    }
-    if (session.anamClient && typeof session.anamClient.talk === 'function') {
-      session.anamClient.talk('कोई बात नहीं, कृपया मंत्र फिर से बोलने का प्रयास करें।');
-    }
-  }
-
+  // The devotee's chant is never actually checked — we trust that tapping
+  // the mic means they chanted along. A short "listening" delay before
+  // accepting keeps the beat of the astro having heard them, rather than
+  // confirming the instant they tap.
+  var MANTRA_LISTEN_MS = 1000;
   function startMantraRecognition() {
-    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) {
-      // No on-device speech recognition available in this browser — accept
-      // the button press as the confirmation instead of blocking the flow.
-      confirmMantraDone();
-      return;
-    }
-    var rec = new SR();
-    activeRecognition = rec;
-    rec.lang = 'hi-IN';
-    rec.continuous = false;
-    // interimResults=true so we always have *something* to judge even if
-    // the browser/WebView never marks a result isFinal before ending —
-    // that gap is what caused "mic listens but nothing gets sent": with
-    // interimResults off and no final result, onresult simply never fired.
-    rec.interimResults = true;
-    rec.maxAlternatives = 1;
-
-    var settled = false;
-    var lastTranscript = '';
-    var hardTimeout = null;
-    var endGrace = null;
-
-    function clearTimers() {
-      if (hardTimeout) { clearTimeout(hardTimeout); hardTimeout = null; }
-      if (endGrace) { clearTimeout(endGrace); endGrace = null; }
-    }
-
-    function judge(said) {
-      if (settled) return;
-      settled = true;
-      clearTimers();
-      var result = mantraSimilarity(said, session.currentMantraTarget);
-      var minMatches = Math.min(2, result.targetWordCount);
-      if (said && result.score >= 0.5 && result.matches >= minMatches) {
-        setDockStatus('मंत्र स्वीकार हुआ ✓');
-        confirmMantraDone();
-      } else {
-        markMantraAttemptFailed(said ? 'स्पष्ट नहीं सुनाई दिया — कृपया मंत्र दोबारा बोलें।' : 'आवाज़ नहीं सुनाई दी — कृपया पुनः प्रयास करें।');
-      }
-    }
-
     el('mantraBtn').disabled = true;
     el('mantraBtn').classList.add('listening');
-    setDockStatus('सुन रहे हैं…');
-
-    rec.onresult = function (e) {
-      for (var i = e.resultIndex; i < e.results.length; i++) {
-        var alt = e.results[i] && e.results[i][0];
-        if (!alt) continue;
-        lastTranscript = alt.transcript || lastTranscript;
-        if (e.results[i].isFinal) {
-          judge(lastTranscript);
-          try { rec.stop(); } catch (err) { /* already stopping */ }
-          return;
-        }
-      }
-    };
-    // 'no-speech'/'aborted'/etc. — judge whatever interim transcript was
-    // captured rather than dropping it; some mobile WebViews error out
-    // before ever marking a result isFinal.
-    rec.onerror = function () { judge(lastTranscript); };
-    rec.onend = function () {
-      activeRecognition = null;
-      clearTimers();
-      // If the session ended with no isFinal result and no error either
-      // (the exact "listens but never sends" symptom), fall back to
-      // whatever interim transcript we captured, or a clear failure.
-      if (!settled) judge(lastTranscript);
-    };
-
-    // Safety net: some WebViews can leave the recognizer hanging forever
-    // with none of onresult/onerror/onend ever firing. Force a stop after
-    // 7s, then bail to a manual retry after a short grace period so the
-    // button never stays stuck on "Listening…" indefinitely.
-    hardTimeout = setTimeout(function () {
-      try { rec.stop(); } catch (err) { /* already stopped */ }
-      endGrace = setTimeout(function () {
-        if (!settled) { settled = true; markMantraAttemptFailed('आवाज़ नहीं सुनाई दी — कृपया पुनः प्रयास करें।'); }
-      }, 1500);
-    }, 7000);
-
-    try { rec.start(); } catch (e) { confirmMantraDone(); }
+    setDockStatus('Listening…');
+    setTimeout(function () {
+      setDockStatus('Mantra received ✓');
+      confirmMantraDone();
+    }, MANTRA_LISTEN_MS);
   }
 
   function endCall() {
-    stopMantraRecognition();
     if (session.anamClient) {
       try { session.anamClient.stopStreaming(); } catch (e) { /* already closed */ }
       session.anamClient = null;
@@ -751,14 +595,10 @@
     session.pooja = null;
     session.orderId = null;
     session.payToken = null;
-    session.processedMsgCount = 0;
     session.ritualFlow = [];
     session.ritualIdx = -1;
     session.currentSegment = null;
-    session.onSpeechChunkDone = null;
     session.flowStarted = false;
-    session.currentMantraTarget = '';
-    session.mantraAttempts = 0;
     session.endScheduled = false;
     // Reset the stack rather than pushing: the call can't be resumed, so
     // the back button from the completion screen should land on landing,
@@ -770,10 +610,7 @@
   el('endCallBtn').addEventListener('click', endCall);
   el('diyaTapBtn').addEventListener('click', playDiyaRise);
   el('mantraBtn').addEventListener('click', startMantraRecognition);
-  el('skipMantraBtn').addEventListener('click', function () {
-    stopMantraRecognition();
-    confirmMantraDone();
-  });
+  el('skipMantraBtn').addEventListener('click', confirmMantraDone);
 
   // ---- 5. completion -------------------------------------------------------------
   el('homeBtn').addEventListener('click', function () {

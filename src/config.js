@@ -183,7 +183,7 @@ export function buildFlow(pooja, devotee) {
   flow.push(action(
     'सबसे पहले हम दीप प्रज्वलित करेंगे। स्क्रीन पर दिख रहे दीये को स्पर्श कीजिए — ' +
     'यही आपका दीप प्रज्वलन है।',
-    { kind: 'diya', uiLabel: 'दीया जलाएँ' }
+    { kind: 'diya', uiLabel: 'Light the diya' }
   ));
 
   // One continuous recitation — sankalp, the pooja's own mantras, and the
@@ -211,7 +211,7 @@ export function buildFlow(pooja, devotee) {
   // The one and only moment the devotee chants aloud, in between the
   // narrated portion and the closing — not at the very start or end.
   flow.push(speech(pooja.chantIntro));
-  flow.push(mantra(pooja.jaapMantras[0], 'मंत्र बोलें'));
+  flow.push(mantra(pooja.jaapMantras[0], 'Chant now'));
 
   flow.push(speech(
     'आपकी ' + pooja.poojaLabel + ' सम्पन्न हुई। ॐ शांति शांति शांति। ईश्वर की कृपा सदा आप और ' +
