@@ -112,6 +112,7 @@ export const POOJAS = [
     id: 'buri-nazar-nivarn',
     name: 'Buri Nazar Nivaran Pooja',
     description: 'Remove the evil eye and negative energy that is blocking your peace, health or progress.',
+    image: 'pooja-buri-nazar-nivarn.jpg',
     priceInr: 399,
     durationMin: 5,
     includes: [
