@@ -55,6 +55,22 @@ export async function createOrder({ amountInr, receipt, notes }) {
   return data;
 }
 
+// Reads an order back from Razorpay. Used only as a fallback in the
+// redirect-mode callback: the order's `notes.poojaId` was set by us at
+// creation time (see createOrder), so it is a server-authoritative record of
+// which pooja an order is for — recoverable even when our own order token
+// doesn't survive the round trip.
+export async function fetchOrder(orderId) {
+  if (RAZORPAY_MOCK_MODE) return { id: orderId, notes: {} };
+  const res = await fetch(`https://api.razorpay.com/v1/orders/${encodeURIComponent(orderId)}`, {
+    headers: {
+      authorization: 'Basic ' + Buffer.from(`${KEY_ID}:${KEY_SECRET}`).toString('base64'),
+    },
+  });
+  if (!res.ok) throw new Error(`razorpay order fetch failed: ${res.status}`);
+  return res.json();
+}
+
 // Verifies the HMAC-SHA256 signature Razorpay's Checkout.js hands back after
 // a successful payment. This is the only trustworthy proof of payment — the
 // client-side "success" callback firing is not, since it can be spoofed.

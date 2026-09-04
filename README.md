@@ -27,6 +27,7 @@ click-through-able with no external services or keys.
 | `PORT` | — | Defaults to `3000` |
 | `RAZORPAY_KEY_ID` | real payment | Public key id, also sent to the client for Checkout.js. Use a `rzp_test_...` key first. |
 | `RAZORPAY_KEY_SECRET` | real payment | Private — used server-side only to create orders and verify payment signatures. |
+| `PAY_TOKEN_SECRET` | any deployment with >1 replica | Shared HMAC secret for the payment tokens. Unset, each process generates its own, so a token minted on one pod is invalid on the next. |
 | `ANAM_API_KEY` | real avatar call | Private — used server-side only to mint short-lived session tokens. Never sent to the client. |
 | `ANAM_PERSONA_ID` | real avatar call | The persona built in Anam Lab — bundles its avatar, voice and base system prompt. |
 | `ANAM_VOICE_ID` | documentation only | ElevenLabs voice this persona uses. Already configured on the persona in Anam Lab; not sent in our API calls. |
@@ -84,12 +85,34 @@ call has `disableInputAudio: true` so Anam's own mic pipeline is never used.
 
 ### Payment → call handoff without a database
 
-There's no DB, so "has this browser tab paid?" can't be a row lookup. Once
-`/api/payment/verify` confirms Razorpay's signature, the server mints a
-short-lived HMAC-signed token (`payToken`, 30 min TTL) scoped to that
-pooja + order + payment id. `/api/anam/session` refuses to start a call
-without a valid one. This is server-authoritative (the client can't forge a
-token without the server's per-process secret) without needing storage.
+There's no DB, so "has this browser tab paid?" can't be a row lookup. Payment
+state travels in two short-lived HMAC-signed tokens instead:
+
+- **`orderToken`** — minted with the order, binds `poojaId ↔ orderId`.
+  Razorpay's signature covers only `order_id|payment_id`, so without this a
+  client could pay for the cheapest pooja and present that valid signature
+  alongside a pricier `poojaId`. Both verify paths take the pooja from this
+  token, never from the request.
+- **`payToken`** (30 min) — minted once the signature checks out.
+  `/api/anam/session` refuses to start a call without a valid one.
+
+`PAY_TOKEN_SECRET` must be the same on every replica: the request that spends
+a token has no reason to land on the pod that minted it.
+
+### Razorpay on mobile: redirect mode
+
+Checkout.js opens netbanking — and Razorpay's test-mode bank page with its
+Success / Failure buttons — in a popup window from inside its iframe. Desktop
+browsers allow that; mobile browsers and WebViews block it or cannot host it,
+so on a phone the bank page never appeared and the payment hung. On mobile
+(`shouldUseRedirectCheckout()` in `app.js`) the client therefore sets
+`redirect: true` with a `callback_url` of `/api/payment/callback?ot=<orderToken>`.
+The top-level page navigates to the bank; on completion Razorpay POSTs the
+result there as a form; the server verifies it and `303`s the browser back to
+`/?paid=<payToken>&pooja=<id>` (or `/?payFailed=1&pooja=<id>`), where
+`resumeFromPaymentRedirect()` rebuilds the selected pooja and lands on the
+details form. Desktop keeps the in-page modal and the JSON `/api/payment/verify`
+route.
 
 ### Mock mode
 
