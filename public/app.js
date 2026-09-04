@@ -211,6 +211,18 @@
     return window.innerWidth < 900;
   }
 
+  // Razorpay requires callback_url to be an absolute http(s) URL and refuses
+  // to open Checkout at all if it isn't — so a bad value here doesn't degrade
+  // the payment, it kills it. location.origin is "null" for an opaque origin,
+  // which is exactly what some WebViews report, so fall back to parsing
+  // location.href and finally to '' meaning "we have no usable origin".
+  function appOrigin() {
+    var o = location.origin;
+    if (o && /^https?:\/\//i.test(o)) return o;
+    var m = /^(https?:\/\/[^/?#]+)/i.exec(location.href || '');
+    return m ? m[1] : '';
+  }
+
   function realPayment(order) {
     loadRazorpayScript()
       .then(function () {
@@ -232,13 +244,19 @@
             },
           },
         };
-        if (shouldUseRedirectCheckout()) {
+        var origin = shouldUseRedirectCheckout() ? appOrigin() : '';
+        if (origin) {
           options.redirect = true;
-          // Absolute, as Razorpay requires. The order token carries the pooja
-          // across the round trip; the server rejects a callback without it.
-          options.callback_url = location.origin + '/api/payment/callback?ot=' +
-            encodeURIComponent(session.orderToken);
+          // The order token carries the pooja across the round trip. Omitted
+          // rather than sent as the string "undefined" when we don't have one
+          // (an older server that predates it) — the callback then recovers
+          // the pooja from the Razorpay order's own notes instead.
+          options.callback_url = origin + '/api/payment/callback' +
+            (session.orderToken ? '?ot=' + encodeURIComponent(session.orderToken) : '');
         }
+        // No usable absolute origin: stay on the in-page modal. It is the
+        // worse experience on a phone, but it opens — a malformed
+        // callback_url would stop Checkout opening at all.
         var rz = new window.Razorpay(options);
         rz.on('payment.failed', function () {
           showPayError('Payment failed. You have not been charged — please try again.');
